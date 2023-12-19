@@ -6,7 +6,9 @@ export function Events({ events }) {
       <p>Events from server:</p>
       <ul>
         {events.map((event, index) => (
-          <li key={index}><pre>{JSON.stringify(event)}</pre></li>
+          <li key={index}>
+            <pre>{JSON.stringify(event)}</pre>
+          </li>
         ))}
       </ul>
     </div>
