@@ -4,11 +4,14 @@ import { ConnectionState } from "./components/ConnectionState";
 import { ConnectionManager } from "./components/ConnectionManager";
 import { Events } from "./components/Events";
 import { MyForm } from "./components/MyForm";
+import GameWorld from "./lib/GameWorld";
+import * as THREE from "three";
 
 export default function App() {
   const [isConnected, setIsConnected] = useState(socket.connected);
   const [fooEvents, setFooEvents] = useState([]);
 
+  // setup socket.io
   useEffect(() => {
     // socket.connect();
     // console.log("connecting");
@@ -41,12 +44,23 @@ export default function App() {
     };
   }, []);
 
+  // Setup threejs
+  useEffect(() => {
+    const game = new GameWorld("gameCanvas");
+    game.initialize();
+    game.animate();
+
+    const boxGeometry = new THREE.BoxGeometry(1, 1, 1);
+    const boxMaterial = new THREE.MeshNormalMaterial({ color: 0x00ff00 });
+    const boxMesh = new THREE.Mesh(boxGeometry, boxMaterial);
+
+    game.scene.add(boxMesh);
+
+  }, []);
+
   return (
-    <div className="App flex flex-col gap-4 m-4">
-      <ConnectionState isConnected={isConnected} />
-      <ConnectionManager />
-      <MyForm />
-      <Events events={fooEvents} />
+    <div>
+      <canvas id="gameCanvas" />
     </div>
   );
 }
