@@ -1,33 +1,20 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { socket } from "./socket";
-import { ConnectionState } from "./components/ConnectionState";
-import { ConnectionManager } from "./components/ConnectionManager";
-import { Events } from "./components/Events";
-import { MyForm } from "./components/MyForm";
 import GameWorld from "./lib/GameWorld";
 import * as THREE from "three";
 
 export default function App() {
-  const [isConnected, setIsConnected] = useState(socket.connected);
-  const [fooEvents, setFooEvents] = useState([]);
-
   // setup socket.io
   useEffect(() => {
-    // socket.connect();
-    // console.log("connecting");
-
     function onConnect() {
-      setIsConnected(true);
       console.log("connected");
     }
 
     function onDisconnect() {
-      setIsConnected(false);
       console.log("disconnected");
     }
 
     function onFooEvent(value) {
-      setFooEvents((previous) => [...previous, value]);
       console.log("foo event", value);
     }
 
@@ -46,21 +33,27 @@ export default function App() {
 
   // Setup threejs
   useEffect(() => {
-    const game = new GameWorld("gameCanvas");
-    game.initialize();
+    const game = new GameWorld("app");
+
+    game.initThree();
+
     game.animate();
 
     const boxGeometry = new THREE.BoxGeometry(1, 1, 1);
-    const boxMaterial = new THREE.MeshNormalMaterial({ color: 0x00ff00 });
+    const boxMaterial = new THREE.MeshNormalMaterial();
     const boxMesh = new THREE.Mesh(boxGeometry, boxMaterial);
 
     game.scene.add(boxMesh);
 
+    const onKeyDown = (event) => {
+      console.log(event.key);
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
   }, []);
 
-  return (
-    <div>
-      <canvas id="gameCanvas" />
-    </div>
-  );
+  return <div id="app"></div>;
 }

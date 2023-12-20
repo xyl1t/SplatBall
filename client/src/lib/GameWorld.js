@@ -3,7 +3,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import Stats from "three/examples/jsm/libs/stats.module";
 
 export default class GameWorld {
-  constructor(canvasId) {
+  constructor(parentDivId) {
     // NOTE: Core components to initialize Three.js app.
     this.scene = undefined;
     this.camera = undefined;
@@ -13,7 +13,7 @@ export default class GameWorld {
     this.fov = 45;
     this.nearPlane = 1;
     this.farPlane = 1000;
-    this.canvasId = canvasId;
+    this.parentDiv = document.getElementById(parentDivId);
 
     // NOTE: Additional components.
     this.clock = undefined;
@@ -25,31 +25,27 @@ export default class GameWorld {
     this.directionalLight = undefined;
   }
 
-  initialize() {
+  initThree() {
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(
       this.fov,
       window.innerWidth / window.innerHeight,
       1,
-      1000
+      1000,
     );
     this.camera.position.set(5, 5, 5);
 
-    // NOTE: Specify a canvas which is already created in the HTML.
-    const canvas = document.getElementById(this.canvasId);
-    this.renderer = new THREE.WebGLRenderer({
-      canvas,
-      // NOTE: Anti-aliasing smooths out the edges.
-      antialias: true,
-    });
+    this.renderer = new THREE.WebGLRenderer({ antialias: false });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
+    // for retina displays (macs, phones, etc.)
+    this.renderer.setPixelRatio(window.devicePixelRatio);
     // this.renderer.shadowMap.enabled = true;
-    document.body.appendChild(this.renderer.domElement);
+    this.parentDiv.appendChild(this.renderer.domElement);
 
     this.clock = new THREE.Clock();
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.stats = Stats();
-    document.body.appendChild(this.stats.dom);
+    this.parentDiv.appendChild(this.stats.dom);
 
     // ambient light which is for the whole scene
     this.ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
@@ -79,7 +75,6 @@ export default class GameWorld {
 
   animate() {
     // NOTE: Window is implied.
-    // requestAnimationFrame(this.animate.bind(this));
     window.requestAnimationFrame(this.animate.bind(this));
     this.render();
     this.stats.update();
