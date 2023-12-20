@@ -1,8 +1,8 @@
 import { useEffect } from "react";
 import { socket } from "./socket";
-import GameWorld from "./lib/GameWorld";
 import * as THREE from "three";
 import { GUI } from "dat.gui";
+import game from "./lib/GameWorld";
 
 export default function App() {
   // setup socket.io
@@ -34,13 +34,19 @@ export default function App() {
 
   // Setup
   useEffect(() => {
-    const game = new GameWorld("app");
-
-    game.initThree();
+    game.setup({
+      parentDivId: "app",
+      initialCameraPosition: {
+        x: 2,
+        y: 4,
+        z: 8
+      },
+      antialias: false,
+    });
 
     game.addAxesHelper(15);
 
-    game.animate();
+    game.startGameLoop();
 
     const boxGeometry = new THREE.BoxGeometry(1, 1, 1);
     const boxMaterial = new THREE.MeshNormalMaterial();
@@ -53,15 +59,9 @@ export default function App() {
     gui.add(boxMesh.position, "y", -5, 5, 0.01).name("box y");
     gui.add(boxMesh.position, "z", -5, 5, 0.01).name("box z");
 
-    const onKeyDown = (event) => {
-      console.log(event.key);
-    };
-
-    window.addEventListener("keydown", onKeyDown);
     return () => {
       game.cleanUp();
       gui.destroy();
-      window.removeEventListener("keydown", onKeyDown);
     };
   }, []);
 

@@ -1,104 +1,158 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import Stats from "three/examples/jsm/libs/stats.module";
+import { deepMerge } from "./utils";
 
-export default class GameWorld {
-  constructor(parentDivId) {
-    // NOTE: Core components to initialize Three.js app.
-    this.scene = undefined;
-    this.camera = undefined;
-    this.renderer = undefined;
+const game = {
+  // NOTE: this is the default config
+  config: {
+    parentDivId: undefined,
+    antialias: true,
+    fov: 75,
+    nearPlane: 1,
+    farPlane: 1000,
+    ambientLight: {
+      color: 0xffffff,
+      intensity: 0.5
+    },
+    directionalLight: {
+      color: 0xffffff,
+      intensity: 1,
+      position: {
+        x: 100,
+        y: 100,
+        z: 100
+      }
+    },
+    initialCameraPosition: {
+        x: 5,
+        y: 5,
+        z: 5
+      },
+    debug: false,
+  },
 
-    // NOTE: Camera params;
-    this.fov = 45;
-    this.nearPlane = 1;
-    this.farPlane = 1000;
-    this.parentDiv = document.getElementById(parentDivId);
+  scene: undefined,
+  camera: undefined,
+  renderer: undefined,
+  parentDiv: document.body,
+  clock: undefined,
+  controls: undefined,
+  stats: undefined,
+  ambientLight: undefined,
+  directionalLight: undefined,
 
-    // NOTE: Additional components.
-    this.clock = undefined;
-    this.stats = undefined;
-    this.controls = undefined;
+  setup(config) {
+    game.config = deepMerge(game.config, config); // overwrite default config with user config
 
-    // NOTE: Lighting is basically required.
-    this.ambientLight = undefined;
-    this.directionalLight = undefined;
-  }
+    if (game.config.parentDivId) {
+      game.parentDiv = document.getElementById(game.config.parentDivId);
+    }
 
-  initThree() {
-    this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(
-      this.fov,
-      window.innerWidth / window.innerHeight,
-      1,
-      1000,
-    );
-    this.camera.position.set(5, 5, 5);
+    setupThree();
+    setupEventListeners();
+  },
 
-    this.renderer = new THREE.WebGLRenderer({ antialias: false });
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
-    // for retina displays (macs, phones, etc.)
-    this.renderer.setPixelRatio(window.devicePixelRatio);
-    // this.renderer.shadowMap.enabled = true;
-    this.parentDiv.appendChild(this.renderer.domElement);
-
-    this.clock = new THREE.Clock();
-    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-    this.stats = Stats();
-    this.parentDiv.appendChild(this.stats.dom);
-
-    // ambient light which is for the whole scene
-    this.ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-    this.ambientLight.castShadow = true;
-    this.scene.add(this.ambientLight);
-
-    // directional light - parallel sun rays
-    this.directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-    // this.directionalLight.castShadow = true;
-    this.directionalLight.position.set(0, 32, 64);
-    this.scene.add(this.directionalLight);
-
-    // if window resizes
-    window.addEventListener("resize", this.onWindowResize.bind(this), false);
-
-    // NOTE: Load space background.
-    // this.loader = new THREE.TextureLoader();
-    // this.scene.background = this.loader.load("./pics/space.jpeg");
-
-    // NOTE: Declare uniforms to pass into glsl shaders.
-    // this.uniforms = {
-    //   u_time: { type: "f", value: 1.0 },
-    //   colorB: { type: "vec3", value: new THREE.Color(0xfff000) },
-    //   colorA: { type: "vec3", value: new THREE.Color(0xffffff) },
-    // };
-  }
-
-  animate() {
-    // NOTE: Window is implied.
-    window.requestAnimationFrame(this.animate.bind(this));
-    this.render();
-    this.stats.update();
-    this.controls.update();
-  }
-
-  render() {
-    // NOTE: Update uniform data on each render.
-    // this.uniforms.u_time.value += this.clock.getDelta();
-    this.renderer.render(this.scene, this.camera);
-  }
-
-  onWindowResize() {
-    this.camera.aspect = window.innerWidth / window.innerHeight;
-    this.camera.updateProjectionMatrix();
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
-  }
+  startGameLoop() {
+    window.requestAnimationFrame(gameLoop);
+  },
 
   addAxesHelper(size) {
     const axesHelper = new THREE.AxesHelper(size);
-    this.scene.add(axesHelper);
-  }
+    game.scene.add(axesHelper);
+  },
 
   cleanUp() {
-    window.removeEventListener("resize", this.onWindowResize, false);
-  }
+    window.removeEventListener("resize", onWindowResize, false);
+    window.removeEventListener("keydown", onKeyDown, false);
+    window.removeEventListener("keyup", onKeyUp, false);
+    window.removeEventListener("mousemove", onMouseMove, false);
+    window.removeEventListener("mousedown", onMouseDown, false);
+    window.removeEventListener("mouseup", onMouseUp, false);
+    window.removeEventListener("mouseleave", onMouseLeave, false);
+    window.cancelAnimationFrame(gameLoop);
+  },
+};
+
+function gameLoop() {
+  window.requestAnimationFrame(gameLoop);
+  game.renderer.render(game.scene, game.camera);
+  game.stats.update();
+  game.controls.update();
 }
+
+function setupThree() {
+  game.scene = new THREE.Scene();
+  game.camera = new THREE.PerspectiveCamera(
+    game.config.fov,
+    window.innerWidth / window.innerHeight,
+    game.config.nearPlane,
+    game.config.farPlane,
+  );
+  game.camera.position.set(...Object.values(game.config.initialCameraPosition));
+
+  game.renderer = new THREE.WebGLRenderer({ antialias: game.config.antialias });
+  game.renderer.setSize(window.innerWidth, window.innerHeight);
+  // for retina displays (macs, phones, etc.)
+  game.renderer.setPixelRatio(window.devicePixelRatio);
+  // gameWorld.renderer.shadowMap.enabled = true;
+  game.parentDiv.appendChild(game.renderer.domElement);
+
+  game.clock = new THREE.Clock();
+  game.controls = new OrbitControls(game.camera, game.renderer.domElement);
+  game.stats = Stats();
+  game.parentDiv.appendChild(game.stats.dom);
+
+  // ambient light which is for the whole scene
+  game.ambientLight = new THREE.AmbientLight(game.config.ambientLight.color, game.config.ambientLight.intensity);
+  game.ambientLight.castShadow = true;
+  game.scene.add(game.ambientLight);
+
+  // directional light - parallel sun rays
+  game.directionalLight = new THREE.DirectionalLight(game.config.directionalLight.color, game.config.directionalLight.intensity);
+  game.directionalLight.castShadow = true;
+  game.directionalLight.position.set(...Object.values(game.config.directionalLight.position));
+  game.scene.add(game.directionalLight);
+}
+
+function setupEventListeners() {
+  window.addEventListener("resize", onWindowResize, false);
+  window.addEventListener("keydown", onKeyDown, false);
+  window.addEventListener("keyup", onKeyUp, false);
+  window.addEventListener("mousemove", onMouseMove, false);
+  window.addEventListener("mousedown", onMouseDown, false);
+  window.addEventListener("mouseup", onMouseUp, false);
+  window.addEventListener("mouseleave", onMouseLeave, false);
+}
+
+function onWindowResize() {
+  game.camera.aspect = window.innerWidth / window.innerHeight;
+  game.camera.updateProjectionMatrix();
+  game.renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+function onKeyDown(event) {
+  console.log("key down: ", event.key);
+}
+
+function onKeyUp(event) {
+  console.log("key up: ", event.key);
+}
+
+function onMouseMove(event) {
+  console.log("mouse move: ", event);
+}
+
+function onMouseDown(event) {
+  console.log("mouse down: ", event);
+}
+
+function onMouseUp(event) {
+  console.log("mouse up: ", event);
+}
+
+function onMouseLeave(event) {
+  console.log("mouse leave: ", event);
+}
+
+export default game;
