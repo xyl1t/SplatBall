@@ -11,7 +11,7 @@ export default function App() {
 
   useEffect(() => {
     // socket.connect();
-    console.log("connecting");
+    // console.log("connecting");
 
     function onConnect() {
       setIsConnected(true);
