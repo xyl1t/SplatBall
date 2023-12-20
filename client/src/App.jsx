@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { socket } from "./socket";
 import * as THREE from "three";
 import { GUI } from "dat.gui";
-import game from "./lib/GameWorld";
+import game from "./lib/game";
 
 export default function App() {
   // setup socket.io
