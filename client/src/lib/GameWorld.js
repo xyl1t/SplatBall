@@ -59,7 +59,7 @@ export default class GameWorld {
     this.scene.add(this.directionalLight);
 
     // if window resizes
-    window.addEventListener("resize", () => this.onWindowResize(), false);
+    window.addEventListener("resize", this.onWindowResize.bind(this), false);
 
     // NOTE: Load space background.
     // this.loader = new THREE.TextureLoader();
@@ -91,5 +91,14 @@ export default class GameWorld {
     this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(window.innerWidth, window.innerHeight);
+  }
+
+  addAxesHelper(size) {
+    const axesHelper = new THREE.AxesHelper(size);
+    this.scene.add(axesHelper);
+  }
+
+  cleanUp() {
+    window.removeEventListener("resize", this.onWindowResize, false);
   }
 }

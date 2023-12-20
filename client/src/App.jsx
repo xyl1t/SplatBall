@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { socket } from "./socket";
 import GameWorld from "./lib/GameWorld";
 import * as THREE from "three";
+import { GUI } from "dat.gui";
 
 export default function App() {
   // setup socket.io
@@ -31,11 +32,13 @@ export default function App() {
     };
   }, []);
 
-  // Setup threejs
+  // Setup
   useEffect(() => {
     const game = new GameWorld("app");
 
     game.initThree();
+
+    game.addAxesHelper(15);
 
     game.animate();
 
@@ -45,12 +48,19 @@ export default function App() {
 
     game.scene.add(boxMesh);
 
+    const gui = new GUI();
+    gui.add(boxMesh.position, "x", -5, 5, 0.01).name("box x");
+    gui.add(boxMesh.position, "y", -5, 5, 0.01).name("box y");
+    gui.add(boxMesh.position, "z", -5, 5, 0.01).name("box z");
+
     const onKeyDown = (event) => {
       console.log(event.key);
     };
 
     window.addEventListener("keydown", onKeyDown);
     return () => {
+      game.cleanUp();
+      gui.destroy();
       window.removeEventListener("keydown", onKeyDown);
     };
   }, []);

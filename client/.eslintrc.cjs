@@ -26,5 +26,6 @@ module.exports = {
       { vars: "all", args: "after-used", ignoreRestSiblings: false },
     ],
     semi: ["error", "always", { omitLastInOneLineBlock: true }],
+    "react/prop-types": "off",
   },
 };
