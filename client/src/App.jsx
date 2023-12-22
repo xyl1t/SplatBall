@@ -1,37 +1,9 @@
 import { useEffect } from "react";
-import { socket } from "./socket";
 import * as THREE from "three";
 import { GUI } from "dat.gui";
 import game from "./lib/game";
 
 export default function App() {
-  // setup socket.io
-  useEffect(() => {
-    function onConnect() {
-      console.log("connected");
-    }
-
-    function onDisconnect() {
-      console.log("disconnected");
-    }
-
-    function onFooEvent(value) {
-      console.log("foo event", value);
-    }
-
-    // register event handlers
-    socket.on("connect", onConnect);
-    socket.on("disconnect", onDisconnect);
-    socket.on("foo", onFooEvent);
-
-    // cleanup
-    return () => {
-      socket.off("connect", onConnect);
-      socket.off("disconnect", onDisconnect);
-      socket.off("foo", onFooEvent);
-    };
-  }, []);
-
   // Setup
   useEffect(() => {
     game.setup({
@@ -39,7 +11,7 @@ export default function App() {
       initialCameraPosition: {
         x: 2,
         y: 4,
-        z: 8
+        z: 8,
       },
       antialias: false,
     });
@@ -55,9 +27,24 @@ export default function App() {
     game.scene.add(boxMesh);
 
     const gui = new GUI();
-    gui.add(boxMesh.position, "x", -5, 5, 0.01).name("box x");
-    gui.add(boxMesh.position, "y", -5, 5, 0.01).name("box y");
-    gui.add(boxMesh.position, "z", -5, 5, 0.01).name("box z");
+
+    const boxFolder = gui.addFolder("box settings");
+    boxFolder.add(boxMesh.position, "x", -5, 5, 0.01).name("box x");
+    boxFolder.add(boxMesh.position, "y", -5, 5, 0.01).name("box y");
+    boxFolder.add(boxMesh.position, "z", -5, 5, 0.01).name("box z");
+
+    const socketFolder = gui.addFolder("socket settings");
+    socketFolder.add(game.socket, "connected").name("Conn status").listen();
+    socketFolder
+      .add({ btn: () => game.initPlayerOnServer() }, "btn")
+      .name("Initialize player");
+    socketFolder
+      .add({ btn: () => game.connectToServer() }, "btn")
+      .name("connect");
+    socketFolder
+      .add({ btn: () => game.disconnectFromServer() }, "btn")
+      .name("disconnect");
+    socketFolder.open();
 
     return () => {
       game.cleanUp();

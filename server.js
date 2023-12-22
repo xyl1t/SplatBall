@@ -6,6 +6,7 @@ import cors from "cors";
 import * as http from "http";
 const server = http.createServer(app);
 import { Server } from "socket.io";
+import { addEntity, createWorld } from "bitecs";
 const io = new Server(server, {
   cors: {
     origin: "http://localhost:5173", // NOTE: for development
@@ -15,17 +16,31 @@ const io = new Server(server, {
 app.use(express.static("client/dist"));
 app.use(cors());
 
+const world = createWorld();
+const _NULL_ENTITY = addEntity(world);
+// world.name = "SplatBallEcsWorld";
+const connectedSocketIds = {};
+
 io.on("connection", (socket) => {
-  console.log("a user connected");
+  console.log("[event:connection] a user connected");
 
-  socket.emit("foo", { hello: "world" });
+  connectedSocketIds[socket.id] = socket;
 
-  socket.on("create-something", (data) => {
-    console.log("create-something", data);
+  socket.on("init", (payload, callback) => {
+    console.log("[event:init] client message: ", payload);
+    const playerId = addEntity(world);
+    socket.eid = addEntity(world);
+    callback({ playerId });
   });
 
+  // socket.emit("foo", { hello: "world" });
+
+  // socket.on("create-something", (data) => {
+  //   console.log("create-something", data);
+  // });
+
   socket.on("disconnect", (reason) => {
-    console.log("a user disconnected, reason:", reason);
+    console.log("[event:disconnect] a user disconnected, reason:", reason);
   });
 });
 

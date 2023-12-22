@@ -2,6 +2,9 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import Stats from "three/examples/jsm/libs/stats.module";
 import { deepMerge } from "./utils";
+import { io } from "socket.io-client";
+const URL =
+  process.env.NODE_ENV === "production" ? undefined : "http://localhost:8080";
 
 const game = {
   // NOTE: this is the default config
@@ -13,7 +16,7 @@ const game = {
     farPlane: 1000,
     ambientLight: {
       color: 0xffffff,
-      intensity: 0.5
+      intensity: 0.5,
     },
     directionalLight: {
       color: 0xffffff,
@@ -21,14 +24,14 @@ const game = {
       position: {
         x: 100,
         y: 100,
-        z: 100
-      }
+        z: 100,
+      },
     },
     initialCameraPosition: {
-        x: 5,
-        y: 5,
-        z: 5
-      },
+      x: 5,
+      y: 5,
+      z: 5,
+    },
     debug: false,
   },
 
@@ -42,6 +45,8 @@ const game = {
   ambientLight: undefined,
   directionalLight: undefined,
 
+  socket: undefined,
+
   setup(config) {
     game.config = deepMerge(game.config, config); // overwrite default config with user config
 
@@ -51,6 +56,7 @@ const game = {
 
     setupThree();
     setupEventListeners();
+    setupSocketIO();
   },
 
   startGameLoop() {
@@ -62,6 +68,24 @@ const game = {
     game.scene.add(axesHelper);
   },
 
+  initPlayerOnServer() {
+    game.socket.emit(
+      "init",
+      { payload: "initialization of player" },
+      (response) => {
+        console.log("server response: ", response);
+      },
+    );
+  },
+
+  connectToServer() {
+    game.socket.connect();
+  },
+
+  disconnectFromServer() {
+    game.socket.disconnect();
+  },
+
   cleanUp() {
     window.removeEventListener("resize", onWindowResize, false);
     window.removeEventListener("keydown", onKeyDown, false);
@@ -71,6 +95,9 @@ const game = {
     window.removeEventListener("mouseup", onMouseUp, false);
     window.removeEventListener("mouseleave", onMouseLeave, false);
     window.cancelAnimationFrame(gameLoop);
+
+    game.socket.removeAllListeners();
+    game.socket.disconnect();
   },
 };
 
@@ -104,14 +131,22 @@ function setupThree() {
   game.parentDiv.appendChild(game.stats.dom);
 
   // ambient light which is for the whole scene
-  game.ambientLight = new THREE.AmbientLight(game.config.ambientLight.color, game.config.ambientLight.intensity);
+  game.ambientLight = new THREE.AmbientLight(
+    game.config.ambientLight.color,
+    game.config.ambientLight.intensity,
+  );
   game.ambientLight.castShadow = true;
   game.scene.add(game.ambientLight);
 
   // directional light - parallel sun rays
-  game.directionalLight = new THREE.DirectionalLight(game.config.directionalLight.color, game.config.directionalLight.intensity);
+  game.directionalLight = new THREE.DirectionalLight(
+    game.config.directionalLight.color,
+    game.config.directionalLight.intensity,
+  );
   game.directionalLight.castShadow = true;
-  game.directionalLight.position.set(...Object.values(game.config.directionalLight.position));
+  game.directionalLight.position.set(
+    ...Object.values(game.config.directionalLight.position),
+  );
   game.scene.add(game.directionalLight);
 }
 
@@ -153,6 +188,13 @@ function onMouseUp(event) {
 
 function onMouseLeave(event) {
   console.log("mouse leave: ", event);
+}
+
+function setupSocketIO() {
+  game.socket = io(URL);
+  game.socket.on("error", (error) => {
+    console.error("socket.io connection error: ", error);
+  });
 }
 
 export default game;
