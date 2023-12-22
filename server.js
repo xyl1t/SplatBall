@@ -7,6 +7,8 @@ import * as http from "http";
 const server = http.createServer(app);
 import { Server } from "socket.io";
 import { addEntity, createWorld } from "bitecs";
+import logger, { colors } from "./utils/logger.js";
+
 const io = new Server(server, {
   cors: {
     origin: "http://localhost:5173", // NOTE: for development
@@ -16,31 +18,28 @@ const io = new Server(server, {
 app.use(express.static("client/dist"));
 app.use(cors());
 
+logger.addWithSubType("event", colors.fgMagenta);
+logger.addType("server", colors.fgWhite);
+
 const world = createWorld();
 const _NULL_ENTITY = addEntity(world);
 // world.name = "SplatBallEcsWorld";
 const connectedSocketIds = {};
 
 io.on("connection", (socket) => {
-  console.log("[event:connection] a user connected");
+  logger.event("connection", "a user connected");
 
   connectedSocketIds[socket.id] = socket;
 
   socket.on("init", (payload, callback) => {
-    console.log("[event:init] client message: ", payload);
+    logger.event("init", "client message:", payload);
     const playerId = addEntity(world);
     socket.eid = addEntity(world);
     callback({ playerId });
   });
 
-  // socket.emit("foo", { hello: "world" });
-
-  // socket.on("create-something", (data) => {
-  //   console.log("create-something", data);
-  // });
-
   socket.on("disconnect", (reason) => {
-    console.log("[event:disconnect] a user disconnected, reason:", reason);
+    logger.event("disconnect", "a user disconnected, reason:", reason);
   });
 });
 
@@ -48,5 +47,5 @@ io.on("connection", (socket) => {
 // }, 30)
 
 server.listen(PORT, () => {
-  console.log(`Server running under http://127.0.0.1:${PORT}`);
+  logger.info(`Server running under http://127.0.0.1:${PORT}`);
 });
