@@ -47,6 +47,7 @@ const game = {
 
   socket: undefined,
 
+  gameLoopRequestId: undefined,
   setup(config) {
     game.config = deepMerge(game.config, config); // overwrite default config with user config
 
@@ -60,7 +61,7 @@ const game = {
   },
 
   startGameLoop() {
-    window.requestAnimationFrame(gameLoop);
+    game.gameLoopRequestId = window.requestAnimationFrame(gameLoop);
   },
 
   addAxesHelper(size) {
@@ -94,7 +95,7 @@ const game = {
     window.removeEventListener("mousedown", onMouseDown, false);
     window.removeEventListener("mouseup", onMouseUp, false);
     window.removeEventListener("mouseleave", onMouseLeave, false);
-    window.cancelAnimationFrame(gameLoop);
+    window.cancelAnimationFrame(game.gameLoopRequestId);
 
     game.socket.removeAllListeners();
     game.socket.disconnect();
