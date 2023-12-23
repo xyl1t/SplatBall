@@ -2,10 +2,19 @@ import { useEffect } from "react";
 import * as THREE from "three";
 import { GUI } from "dat.gui";
 import game from "./lib/game";
+import { useState } from "react";
 
 export default function App() {
+  const [isSetup, setIsSetup] = useState(false);
+  
+  console.log("DEBUG", game.debug);
+
   // Setup
   useEffect(() => {
+    if (isSetup && game.debug) return;
+    setIsSetup(true);
+
+    console.log(game);
     game.setup({
       parentDivId: "app",
       initialCameraPosition: {
@@ -16,25 +25,15 @@ export default function App() {
       antialias: false,
     });
 
-    game.addAxesHelper(15);
+    game.addAxesHelper(10);
+    game.addGridHelper(15);
 
     game.startGameLoop();
 
-    const boxGeometry = new THREE.BoxGeometry(1, 1, 1);
-    const boxMaterial = new THREE.MeshNormalMaterial();
-    const boxMesh = new THREE.Mesh(boxGeometry, boxMaterial);
-
-    game.scene.add(boxMesh);
-
     const gui = new GUI();
 
-    const boxFolder = gui.addFolder("box settings");
-    boxFolder.add(boxMesh.position, "x", -5, 5, 0.01).name("box x");
-    boxFolder.add(boxMesh.position, "y", -5, 5, 0.01).name("box y");
-    boxFolder.add(boxMesh.position, "z", -5, 5, 0.01).name("box z");
-
     const socketFolder = gui.addFolder("socket settings");
-    socketFolder.add(game.socket, "connected").name("Conn status").listen();
+    socketFolder.add(game.socket, "connected").name("Is conected").listen();
     socketFolder
       .add({ btn: () => game.initPlayerOnServer() }, "btn")
       .name("Initialize player");
@@ -47,10 +46,15 @@ export default function App() {
     socketFolder.open();
 
     return () => {
-      game.cleanUp();
-      gui.destroy();
+      console.log("cleanup");
+      if (!game.debug) {
+        game.cleanUp();
+        gui.destroy();
+      }
     };
   }, []);
 
-  return <div id="app"></div>;
+  return <div id="app">
+    <canvas id="gameCanvas"></canvas>
+  </div>;
 }

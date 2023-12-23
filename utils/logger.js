@@ -28,6 +28,42 @@ export const colors = {
   bgGray: "\x1b[100m",
 };
 
+export function gray(text) {
+  return colors.fgGray + text + colors.reset;
+}
+
+export function white(text) {
+  return colors.fgWhite + text + colors.reset;
+}
+
+export function cyan(text) {
+  return colors.fgCyan + text + colors.reset;
+}
+
+export function magenta(text) {
+  return colors.fgMagenta + text + colors.reset;
+}
+
+export function blue(text) {
+  return colors.fgBlue + text + colors.reset;
+}
+
+export function yellow(text) {
+  return colors.fgYellow + text + colors.reset;
+}
+
+export function green(text) {
+  return colors.fgGreen + text + colors.reset;
+}
+
+export function red(text) {
+  return colors.fgRed + text + colors.reset;
+}
+
+export function black(text) {
+  return colors.fgBlack + text + colors.reset;
+}
+
 const getTime = () => {
   return new Date().toISOString().slice(11, 23);
 };
@@ -35,7 +71,7 @@ const getTime = () => {
 const log = (type, color, ...message) => {
   console.log(
     colors.fgGray + `[${getTime()}]` + colors.reset,
-    `${color}[${type}]${colors.reset}`,
+    `${color}[${type}${color}]${colors.reset}`, // NOTE: add ${color} after ${type} in case the ${type} also has color
     ...message,
   );
 };
@@ -61,7 +97,7 @@ const logger = {
     log("error", colors.fgRed, ...message);
   },
 
-  warning: (...message) => {
+  warn: (...message) => {
     log("warning", colors.fgYellow, ...message);
   },
 
