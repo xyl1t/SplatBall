@@ -1,60 +1,35 @@
-import { useEffect } from "react";
-import * as THREE from "three";
-import { GUI } from "dat.gui";
-import game from "./lib/game";
-import { useState } from "react";
+import { useState } from 'react'
+import reactLogo from './assets/react.svg'
+import viteLogo from '/vite.svg'
+import './App.css'
 
-export default function App() {
-  const [isSetup, setIsSetup] = useState(false);
-  
-  console.log("DEBUG", game.debug);
+function App() {
+  const [count, setCount] = useState(0)
 
-  // Setup
-  useEffect(() => {
-    if (isSetup && game.debug) return;
-    setIsSetup(true);
-
-    console.log(game);
-    game.setup({
-      parentDivId: "app",
-      initialCameraPosition: {
-        x: 2,
-        y: 4,
-        z: 8,
-      },
-      antialias: false,
-    });
-
-    game.addAxesHelper(10);
-    game.addGridHelper(15);
-
-    game.startGameLoop();
-
-    const gui = new GUI();
-
-    const socketFolder = gui.addFolder("socket settings");
-    socketFolder.add(game.socket, "connected").name("Is conected").listen();
-    socketFolder
-      .add({ btn: () => game.initPlayerOnServer() }, "btn")
-      .name("Initialize player");
-    socketFolder
-      .add({ btn: () => game.connectToServer() }, "btn")
-      .name("connect");
-    socketFolder
-      .add({ btn: () => game.disconnectFromServer() }, "btn")
-      .name("disconnect");
-    socketFolder.open();
-
-    return () => {
-      console.log("cleanup");
-      if (!game.debug) {
-        game.cleanUp();
-        gui.destroy();
-      }
-    };
-  }, []);
-
-  return <div id="app">
-    <canvas id="gameCanvas"></canvas>
-  </div>;
+  return (
+    <>
+      <div>
+        <a href="https://vitejs.dev" target="_blank">
+          <img src={viteLogo} className="logo" alt="Vite logo" />
+        </a>
+        <a href="https://react.dev" target="_blank">
+          <img src={reactLogo} className="logo react" alt="React logo" />
+        </a>
+      </div>
+      <h1>Vite + React</h1>
+      <div className="card">
+        <button onClick={() => setCount((count) => count + 1)}>
+          count is {count}
+        </button>
+        <p>
+          Edit <code>src/App.jsx</code> and save to test HMR
+        </p>
+      </div>
+      <p className="read-the-docs">
+        Click on the Vite and React logos to learn more
+      </p>
+    </>
+  )
 }
+
+export default App
