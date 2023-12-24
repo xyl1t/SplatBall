@@ -1,4 +1,3 @@
-// const PORT = process.env.PORT ?? 8080;
 const PORT = process.env.NODE_ENV === "production" ? 80 : 8080;
 import express from "express";
 const app = express();
@@ -6,8 +5,9 @@ import cors from "cors";
 import * as http from "http";
 const server = http.createServer(app);
 import { Server } from "socket.io";
-import { Types, addComponent, addEntity, createWorld, defineComponent, defineDeserializer, defineSerializer, removeEntity } from "bitecs";
+import { addComponent, addEntity, createWorld, defineSerializer, removeEntity } from "bitecs";
 import logger, { colors, green, red } from "./utils/logger.js";
+import { Position } from "shared";
 
 const io = new Server(server, {
   cors: {
@@ -35,9 +35,8 @@ const game = {
 
 const world = createWorld();
 const serialize = defineSerializer(world);
-const deserialize = defineDeserializer(world);
+// const deserialize = defineDeserializer(world);
 const _NULL_ENTITY = addEntity(world);
-const Position = defineComponent({ x: Types.f32, y: Types.f32, z: Types.f32 });
 
 io.on("connection", (socket) => {
   logger.event(green("connection"), "socket id:", socket.id);
@@ -111,3 +110,4 @@ setInterval(() => {
 server.listen(PORT, () => {
   logger.info(`Server running under http://127.0.0.1:${PORT}`);
 });
+

@@ -11,10 +11,18 @@ module.exports = {
   parserOptions: { ecmaVersion: 'latest', sourceType: 'module' },
   settings: { react: { version: '18.2' } },
   plugins: ['react-refresh'],
+  globals: { process: 'readable' },
   rules: {
-    'react-refresh/only-export-components': [
-      'warn',
+    "react-refresh/only-export-components": [
+      "warn",
       { allowConstantExport: true },
     ],
+    quotes: ["error", "double"],
+    "no-unused-vars": [
+      "error",
+      { vars: "all", args: "after-used", ignoreRestSiblings: false },
+    ],
+    semi: ["error", "always", { omitLastInOneLineBlock: true }],
+    "react/prop-types": "off",
   },
 }
