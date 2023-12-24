@@ -1,30 +1,21 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { socket } from "./socket";
-import { ConnectionState } from "./components/ConnectionState";
-import { ConnectionManager } from "./components/ConnectionManager";
-import { Events } from "./components/Events";
-import { MyForm } from "./components/MyForm";
+import * as THREE from "three";
+import { GUI } from "dat.gui";
+import game from "./lib/game";
 
 export default function App() {
-  const [isConnected, setIsConnected] = useState(socket.connected);
-  const [fooEvents, setFooEvents] = useState([]);
-
+  // setup socket.io
   useEffect(() => {
-    // socket.connect();
-    // console.log("connecting");
-
     function onConnect() {
-      setIsConnected(true);
       console.log("connected");
     }
 
     function onDisconnect() {
-      setIsConnected(false);
       console.log("disconnected");
     }
 
     function onFooEvent(value) {
-      setFooEvents((previous) => [...previous, value]);
       console.log("foo event", value);
     }
 
@@ -41,12 +32,38 @@ export default function App() {
     };
   }, []);
 
-  return (
-    <div className="App flex flex-col gap-4 m-4">
-      <ConnectionState isConnected={isConnected} />
-      <ConnectionManager />
-      <MyForm />
-      <Events events={fooEvents} />
-    </div>
-  );
+  // Setup
+  useEffect(() => {
+    game.setup({
+      parentDivId: "app",
+      initialCameraPosition: {
+        x: 2,
+        y: 4,
+        z: 8
+      },
+      antialias: false,
+    });
+
+    game.addAxesHelper(15);
+
+    game.startGameLoop();
+
+    const boxGeometry = new THREE.BoxGeometry(1, 1, 1);
+    const boxMaterial = new THREE.MeshNormalMaterial();
+    const boxMesh = new THREE.Mesh(boxGeometry, boxMaterial);
+
+    game.scene.add(boxMesh);
+
+    const gui = new GUI();
+    gui.add(boxMesh.position, "x", -5, 5, 0.01).name("box x");
+    gui.add(boxMesh.position, "y", -5, 5, 0.01).name("box y");
+    gui.add(boxMesh.position, "z", -5, 5, 0.01).name("box z");
+
+    return () => {
+      game.cleanUp();
+      gui.destroy();
+    };
+  }, []);
+
+  return <div id="app"></div>;
 }
