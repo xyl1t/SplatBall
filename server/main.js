@@ -1,4 +1,5 @@
-import { sayHi } from "@SplatBall/shared";
+import chalk from "chalk";
+import { sayHi } from "shared";
 
-
-console.log("starting server", sayHi("abc"));
+console.log("starting server", chalk.red("test"));
+sayHi("test");
