@@ -3,11 +3,11 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import Stats from "three/examples/jsm/libs/stats.module";
 import { deepMerge } from "./utils";
 import { io } from "socket.io-client";
-import { Types, createWorld, defineComponent, defineDeserializer, defineQuery, registerComponent } from "bitecs";
+import { createWorld, defineDeserializer, defineQuery, registerComponent } from "bitecs";
+import { Position } from "shared";
 const URL =
   process.env.NODE_ENV === "production" ? undefined : "http://localhost:8080";
 
-const Position = defineComponent({ x: Types.f32, y: Types.f32, z: Types.f32 });
 const positionQuery = defineQuery([Position]);
 
 const game = {

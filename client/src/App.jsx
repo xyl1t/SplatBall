@@ -6,7 +6,7 @@ import { useState } from "react";
 
 export default function App() {
   const [isSetup, setIsSetup] = useState(false);
-  
+
   console.log("DEBUG", game.debug);
 
   // Setup
