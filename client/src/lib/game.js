@@ -13,7 +13,7 @@ const positionQuery = defineQuery([Position]);
 const game = {
   // NOTE: this is the default config
   config: {
-    parentDivId: undefined,
+    canvasId: "gameCanvas",
     antialias: true,
     fov: 75,
     nearPlane: 1,
@@ -49,7 +49,6 @@ const game = {
   scene: undefined,
   camera: undefined,
   renderer: undefined,
-  parentDiv: document.body,
   clock: undefined,
   controls: undefined,
   stats: undefined,
@@ -74,9 +73,9 @@ const game = {
   setup(config) {
     game.config = deepMerge(game.config, config); // overwrite default config with user config
 
-    if (game.config.parentDivId) {
-      game.parentDiv = document.getElementById(game.config.parentDivId);
-    }
+    // if (game.config.parentDivId) {
+    //   game.parentDiv = document.getElementById(game.config.parentDivId);
+    // }
 
     setupThree();
     setupEventListeners();
@@ -193,18 +192,17 @@ function setupThree() {
 
   game.renderer = new THREE.WebGLRenderer({
     antialias: game.config.antialias,
-    canvas: document.getElementById("gameCanvas"),
+    canvas: document.getElementById(game.config.canvasId),
   });
   game.renderer.setSize(window.innerWidth, window.innerHeight);
   // for retina displays (macs, phones, etc.)
   game.renderer.setPixelRatio(window.devicePixelRatio);
   // gameWorld.renderer.shadowMap.enabled = true;
-  game.parentDiv.appendChild(game.renderer.domElement);
 
   game.clock = new THREE.Clock();
   game.controls = new OrbitControls(game.camera, game.renderer.domElement);
   game.stats = Stats();
-  game.parentDiv.appendChild(game.stats.dom);
+  document.body.appendChild(game.stats.dom);
 
   // ambient light which is for the whole scene
   game.ambientLight = new THREE.AmbientLight(

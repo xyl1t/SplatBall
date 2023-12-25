@@ -14,7 +14,7 @@ export default function App() {
     setIsSetup(true);
 
     game.setup({
-      parentDivId: "app",
+      canvasId: "gameCanvas",
       initialCameraPosition: {
         x: 2,
         y: 4,
