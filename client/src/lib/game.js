@@ -138,7 +138,9 @@ const game = {
     game.stats.dom.remove();
 
     game.socket.removeAllListeners();
-    game.socket.disconnect();
+    if (game.socket.connected) {
+      game.socket.disconnect();
+    }
   },
 };
 
