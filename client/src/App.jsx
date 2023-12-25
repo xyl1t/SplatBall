@@ -1,5 +1,4 @@
 import { useEffect } from "react";
-import * as THREE from "three";
 import { GUI } from "dat.gui";
 import game from "./lib/game";
 import { useState } from "react";
@@ -14,7 +13,6 @@ export default function App() {
     if (isSetup && game.debug) return;
     setIsSetup(true);
 
-    console.log(game);
     game.setup({
       parentDivId: "app",
       initialCameraPosition: {
@@ -52,7 +50,7 @@ export default function App() {
         gui.destroy();
       }
     };
-  }, []);
+  }, [isSetup]);
 
   return <div id="app">
     <canvas id="gameCanvas"></canvas>
