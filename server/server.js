@@ -5,7 +5,13 @@ import cors from "cors";
 import * as http from "http";
 const server = http.createServer(app);
 import { Server } from "socket.io";
-import { addComponent, addEntity, createWorld, removeEntity, getAllEntities, removeComponent } from "bitecs";
+import {
+  addComponent,
+  addEntity,
+  createWorld,
+  removeEntity,
+  removeComponent,
+} from "bitecs";
 import logger, { colors, green, red } from "./utils/logger.js";
 import { Me, Position, serialize } from "shared";
 
@@ -34,11 +40,7 @@ const game = {
 };
 
 const world = createWorld();
-// const deserialize = defineDeserializer(world);
-// const _NULL_ENTITY = addEntity(world);
-// addEntity(world);
-// addEntity(world);
-// addEntity(world);
+const _NULL_ENTITY = addEntity(world);
 
 io.on("connection", (socket) => {
   logger.event(green("connection"), "socket id:", socket.id);
@@ -50,25 +52,27 @@ io.on("connection", (socket) => {
     if (socket.eid) {
       // removeEntity(world, socket.eid);
       // delete playerSockets[socket.eid];
-      logger.warn(`This player has already been initialized, not re-initializing! (eid: ${socket.eid}, socket id: ${socket.id})`);
+      logger.warn(
+        `This player has already been initialized, not re-initializing! (eid: ${socket.eid}, socket id: ${socket.id})`,
+      );
     } else {
       const playerId = addEntity(world);
       socket.eid = playerId;
       playerSockets[playerId] = socket;
 
       addComponent(world, Position, playerId);
-      Position.x[playerId] = (Math.random()*2-1) * 7;
+      Position.x[playerId] = (Math.random() * 2 - 1) * 7;
       Position.y[playerId] = Math.random() * 4;
-      Position.z[playerId] = (Math.random()*2-1) * 7;
+      Position.z[playerId] = (Math.random() * 2 - 1) * 7;
 
       // NOTE: It is necessary to specify that this entity is the player ("Me")
       // because the entity ids on the client are not the same as on the server
       addComponent(world, Me, playerId);
 
       const payload = serialize(world);
-      removeComponent(world, Me, playerId);
-
       callback(payload);
+
+      removeComponent(world, Me, playerId);
     }
   });
 
@@ -138,4 +142,3 @@ setInterval(() => {
 server.listen(PORT, () => {
   logger.info(`Server running under http://127.0.0.1:${PORT}`);
 });
-
