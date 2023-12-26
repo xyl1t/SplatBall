@@ -137,7 +137,7 @@ const game = {
       "join",
       { payload: "initialization of player" },
       (response) => {
-        deserialize(game.world, response, DESERIALIZE_MODE.MAP);
+        deserialize(game.world, response, DESERIALIZE_MODE.MAP_REPLACING);
 
         game.playerId = meQuery(game.world)[0];
 
@@ -483,7 +483,7 @@ function setupSocketIO() {
     // deserialize(game.world, payload, DESERIALIZE_MODE.MAP);
     // resetWorld(game.world);
     // resetGlobals();
-    deserialize(game.world, payload, DESERIALIZE_MODE.MAP);
+    deserialize(game.world, payload, DESERIALIZE_MODE.MAP_REPLACING);
     console.log(getAllEntities(game.world));
   });
 }
