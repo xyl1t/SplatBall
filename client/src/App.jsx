@@ -10,11 +10,12 @@ export default function App() {
   // Setup
   useEffect(() => {
     game.setup({
-      canvasId: "gameCanvas",
+      parentDivId: "gameDiv",
+      // canvasId: "gameCanvas",
       initialCameraPosition: {
-        x: 2,
-        y: 4,
-        z: 8,
+        x: 4,
+        y: 6,
+        z: 10,
       },
       directionalLight: {
         position: {
@@ -52,6 +53,10 @@ export default function App() {
       debugFolder.add(game, "toggleLabels").name("Show EID's");
       debugFolder.add(game.debug.axesHelper, "visible").name("Show axes");
       debugFolder.add(game.debug.gridHelper, "visible").name("Show grid");
+      const labelFolder = debugFolder.addFolder("labels");
+      labelFolder.add(game.debug.labels, "eids").name("Entity ids").onChange(() => {game.debug.labels.update()});
+      labelFolder.add(game.debug.labels, "components").name("Components").onChange(() => {game.debug.labels.update()});
+      labelFolder.add(game.debug.labels, "componentDetails").name("Details").onChange(() => {game.debug.labels.update()});
       debugFolder.open();
     }
 
@@ -64,8 +69,9 @@ export default function App() {
 
   return (
     <div id="app">
-      <canvas id="gameCanvas"></canvas>
-      <div id="debug"></div>
+      <div id="gameDiv">
+        {/*<canvas id="gameCanvas"></canvas>*/}
+      </div>
     </div>
   );
 }
