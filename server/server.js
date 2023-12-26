@@ -5,9 +5,9 @@ import cors from "cors";
 import * as http from "http";
 const server = http.createServer(app);
 import { Server } from "socket.io";
-import { addComponent, addEntity, createWorld, defineSerializer, removeEntity } from "bitecs";
+import { addComponent, addEntity, createWorld, removeEntity, getAllEntities, removeComponent } from "bitecs";
 import logger, { colors, green, red } from "./utils/logger.js";
-import { Position } from "shared";
+import { Me, Position, serialize } from "shared";
 
 const io = new Server(server, {
   cors: {
@@ -34,17 +34,19 @@ const game = {
 };
 
 const world = createWorld();
-const serialize = defineSerializer(world);
 // const deserialize = defineDeserializer(world);
-const _NULL_ENTITY = addEntity(world);
+// const _NULL_ENTITY = addEntity(world);
+// addEntity(world);
+// addEntity(world);
+// addEntity(world);
 
 io.on("connection", (socket) => {
   logger.event(green("connection"), "socket id:", socket.id);
 
   connectedSockets.push(socket);
 
-  socket.on("init", (payload, callback) => {
-    logger.event("init", "client message:", payload);
+  socket.on("join", (payload, callback) => {
+    logger.event("join", "client message:", payload);
     if (socket.eid) {
       // removeEntity(world, socket.eid);
       // delete playerSockets[socket.eid];
@@ -53,19 +55,44 @@ io.on("connection", (socket) => {
       const playerId = addEntity(world);
       socket.eid = playerId;
       playerSockets[playerId] = socket;
+
       addComponent(world, Position, playerId);
-      Position.x[playerId] = playerId;
-      Position.x[playerId] = playerId;
-      callback({ playerId });
+      Position.x[playerId] = (Math.random()*2-1) * 7;
+      Position.y[playerId] = Math.random() * 4;
+      Position.z[playerId] = (Math.random()*2-1) * 7;
+
+      // NOTE: It is necessary to specify that this entity is the player ("Me")
+      // because the entity ids on the client are not the same as on the server
+      addComponent(world, Me, playerId);
+
+      const payload = serialize(world);
+      removeComponent(world, Me, playerId);
+
+      callback(payload);
     }
+  });
+
+  socket.on("leave", (payload) => {
+    logger.event("leave", "client message:", payload);
+    removeEntity(world, socket.eid);
+    socket.eid = null;
   });
 
   socket.on("input", (payload) => {
     logger.event("input", "client message:", payload);
 
-    if (payload.addCube) {
-      const cubeId = addEntity(world);
-      addComponent(world, Position, cubeId);
+    if (payload.x) {
+      Position.x[socket.eid] += 1 * game.config.dt * payload.x;
+    }
+    if (payload.z) {
+      Position.z[socket.eid] += 1 * game.config.dt * payload.z;
+    }
+
+    if (payload.space) {
+      Position.y[socket.eid] += 1 * game.config.dt;
+    }
+    if (payload.shift) {
+      Position.y[socket.eid] -= 1 * game.config.dt;
     }
   });
 
@@ -93,6 +120,7 @@ setInterval(() => {
 
   // logger.debug("accumulator", accumulator, "dt", game.config.dt);
   while (accumulator >= game.config.dt) {
+    // for (const socket of connectedSockets) {
     for (const socket of Object.values(playerSockets)) {
       const payload = serialize(world);
       socket.emit("update", payload);
