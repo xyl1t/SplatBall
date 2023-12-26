@@ -15,8 +15,6 @@ import {
   getAllEntities,
   registerComponent,
   exitQuery,
-  hasComponent,
-  addEntity,
 } from "bitecs";
 import { Me, Position, deserialize } from "shared";
 const URL =
@@ -159,9 +157,7 @@ const game = {
     game.socket.disconnect();
   },
 
-  toggleLabels() {
-
-  },
+  toggleLabels() {},
 
   cleanUp() {
     window.removeEventListener("resize", onWindowResize, false);
@@ -217,7 +213,6 @@ function gameLoop(currentTime = 0) {
         playerLabel.name = "label";
         playerLabel.position.set(0, 0, 0);
         playerLabel.center.set(0.5, 1);
-        // game.scene.add(playerLabel);
         mesh.add(playerLabel);
         playerLabel.layers.set(0);
         mesh.layers.enableAll();
@@ -241,25 +236,11 @@ function gameLoop(currentTime = 0) {
   while (accumulator >= game.config.dt) {
     // game logic
 
-    // game.scene.traverse((object) => {
-    //   const eid = object.name;
-    //   console.log("eid: ", eid);
-    //   if (hasComponent(game.world, Position, eid)) {
-    //     object.position.set(
-    //       Position.x[eid],
-    //       Position.y[eid],
-    //       Position.z[eid],
-    //     );
-    //   }
-    // });
-
     // Update positions
     positionQuery(game.world).forEach((eid) => {
-      game.scene.getObjectByName(eid)?.position?.set(
-        Position.x[eid],
-        Position.y[eid],
-        Position.z[eid],
-      );
+      game.scene
+        .getObjectByName(eid)
+        ?.position?.set(Position.x[eid], Position.y[eid], Position.z[eid]);
     });
 
     // NOTE: Don't change these lines, needed for the game loop
@@ -280,12 +261,12 @@ function gameLoop(currentTime = 0) {
     Position.x[ent];
   }
 
-  // if (game.playerId == 0) {
+  if (game.playerId >= 0) {
     const inputPayload = getInputPayload();
     if (inputPayload) {
       game.socket.emit("input", inputPayload);
     }
-  // }
+  }
 
   // NOTE: gameLoopRequestId is used later to cancel the game loop in cleanUp()
   game.gameLoopRequestId = window.requestAnimationFrame(gameLoop);
@@ -490,7 +471,6 @@ function setupSocketIO() {
 
 function setupECSWorld() {
   game.world = createWorld();
-  // game._NULL_ENTITY = addEntity(game.world);
 
   registerComponent(game.world, Position);
 }
