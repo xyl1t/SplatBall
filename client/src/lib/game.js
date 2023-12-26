@@ -90,7 +90,7 @@ const game = {
   gameLoopRequestId: undefined,
 
   debug: {
-    enabled: (window.DEBUG = window.location.search.includes("debug")),
+    enabled: (window.location.search.includes("debug")),
     domElement: undefined,
     gridHelper: undefined,
     axesHelper: undefined,
@@ -157,22 +157,44 @@ const game = {
     game.gameLoopRequestId = window.requestAnimationFrame(gameLoop);
   },
 
+  toggleDebug() {
+    // game.debug.enabled = !game.debug.enabled;
+    console.log("Debug mode ", game.debug.enabled ? "ON" : "OFF");
+    if (game.debug.enabled) {
+      game.debug.axesHelper.visible = true;
+      game.debug.gridHelper.visible = true;
+      game.debug.labels.eids = true;
+      game.debug.labels.components = false;
+      game.debug.labels.componentDetails = true;
+      game.camera.layers.enable(1);
+    } else {
+      game.debug.axesHelper.visible = false;
+      game.debug.gridHelper.visible = false;
+      game.debug.labels.eids = false;
+      game.debug.labels.components = false;
+      game.debug.labels.componentDetails = false;
+      game.camera.layers.disable(1);
+    }
+  },
+
   addAxesHelper(size) {
     game.debug.axesHelper = new THREE.AxesHelper(size);
+    game.debug.axesHelper.name = "DebugAxesHelper";
     game.scene.add(game.debug.axesHelper);
   },
 
   removeAxesHelper() {
-    game.scene.remove(game.scene.getObjectByName("AxesHelper"));
+    game.scene.remove(game.scene.getObjectByName("DebugAxesHelper"));
   },
 
   addGridHelper(size) {
     game.debug.gridHelper = new THREE.GridHelper(size, size);
+    game.debug.gridHelper.name = "DebugGridHelper";
     game.scene.add(game.debug.gridHelper);
   },
 
   removeGridHelper() {
-    game.scene.remove(game.scene.getObjectByName("GridHelper"));
+    game.scene.remove(game.scene.getObjectByName("DebugGridHelper"));
   },
 
   joinGame() {
@@ -216,7 +238,7 @@ const game = {
 
     game.renderer.domElement.remove();
 
-    game.stats.dom.remove();
+    game.stats?.dom.remove();
 
     game.labelRenderer.domElement.remove();
 
@@ -278,6 +300,7 @@ function gameLoop(currentTime = 0) {
       playerLabel.name = "label";
       playerLabel.position.set(0, 0, 0);
       playerLabel.center.set(0, 0);
+      playerLabel.layers.set(1);
       mesh.add(playerLabel);
       // playerLabel.layers.set(0);
       // mesh.layers.enableAll();
@@ -319,8 +342,8 @@ function gameLoop(currentTime = 0) {
   }
 
   game.renderer.render(game.scene, game.camera);
-  game.labelRenderer.render(game.scene, game.camera);
-  game.stats.update();
+  game.labelRenderer?.render(game.scene, game.camera);
+  game.stats?.update();
   game.controls.update();
 
   const ents = positionQuery(game.world);
@@ -440,9 +463,17 @@ function setupThree() {
 }
 
 function setupDebugView() {
-  game.stats = new Stats();
-  game.stats.showPanel(0);
-  game.parentDiv.appendChild(game.stats.dom);
+  if (game.debug.enabled) {
+    game.stats = new Stats();
+    game.stats.showPanel(0);
+    game.parentDiv.appendChild(game.stats.dom);
+
+    game.addAxesHelper(10);
+    game.addGridHelper(15);
+
+    game.camera.layers.enable(1); // show label layer
+  }
+
 
   game.labelRenderer = new CSS2DRenderer();
   game.labelRenderer.setSize(window.innerWidth, window.innerHeight);
@@ -474,9 +505,11 @@ function onKeyDown(event) {
 
   if (game.keyboard["shift"] && game.keyboard["control"]) {
     if (game.keyboard.d) {
-      game.debug.enabled = !game.debug.enabled;
-      console.log("Debug mode ", game.debug.enabled ? "ON" : "OFF");
+      game.toggleDebug();
     }
+  }
+  if (game.keyboard["j"]) {
+    game.joinGame();
   }
 }
 
