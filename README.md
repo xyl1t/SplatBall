@@ -42,6 +42,8 @@ pnpm run server
 These two will start the client and server in development mode, meaning that it
 will look for code changes and restart automatically.
 
+For debugging, append `?debug` to the url: `http://localhost:5173?debug`
+
 ## Deployment
 
 This script build the frontend and starts the server.

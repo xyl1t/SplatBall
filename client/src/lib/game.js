@@ -1,19 +1,35 @@
 import * as THREE from "three";
+import {
+  CSS2DObject,
+  CSS2DRenderer,
+} from "three/addons/renderers/CSS2DRenderer.js";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import Stats from "three/examples/jsm/libs/stats.module";
 import { deepMerge } from "./utils";
 import { io } from "socket.io-client";
-import { createWorld, defineDeserializer, defineQuery, registerComponent } from "bitecs";
-import { Position } from "shared";
+import {
+  DESERIALIZE_MODE,
+  createWorld,
+  defineQuery,
+  enterQuery,
+  getAllEntities,
+  registerComponent,
+  exitQuery,
+} from "bitecs";
+import { Me, Position, deserialize } from "shared";
 const URL =
   process.env.NODE_ENV === "production" ? undefined : "http://localhost:8080";
 
+const meQuery = defineQuery([Me]);
 const positionQuery = defineQuery([Position]);
+const enteredPositionQuery = enterQuery(positionQuery);
+const exitedPositionQuery = exitQuery(positionQuery);
 
 const game = {
   // NOTE: this is the default config
   config: {
-    parentDivId: undefined,
+    canvasId: "gameCanvas",
+    debugDivId: "debug",
     antialias: true,
     fov: 75,
     nearPlane: 1,
@@ -42,14 +58,19 @@ const game = {
   },
 
   isSetup: false,
-  debug: (window.DEBUG = window.location.search.includes("debug")),
+  debug: {
+    enabled: (window.DEBUG = window.location.search.includes("debug")),
+    domElement: undefined,
+    gridHelper: undefined,
+    axesHelper: undefined,
+    labels: undefined,
+  },
 
   currentTick: 0,
 
   scene: undefined,
   camera: undefined,
   renderer: undefined,
-  parentDiv: document.body,
   clock: undefined,
   controls: undefined,
   stats: undefined,
@@ -59,7 +80,7 @@ const game = {
   socket: undefined,
 
   world: undefined,
-  deserialize: undefined,
+  playerId: undefined,
 
   keyboard: {},
   mouse: {
@@ -74,9 +95,9 @@ const game = {
   setup(config) {
     game.config = deepMerge(game.config, config); // overwrite default config with user config
 
-    if (game.config.parentDivId) {
-      game.parentDiv = document.getElementById(game.config.parentDivId);
-    }
+    // if (game.config.parentDivId) {
+    //   game.parentDiv = document.getElementById(game.config.parentDivId);
+    // }
 
     setupThree();
     setupEventListeners();
@@ -92,7 +113,8 @@ const game = {
   },
 
   addAxesHelper(size) {
-    game.scene.add(new THREE.AxesHelper(size));
+    game.debug.axesHelper = new THREE.AxesHelper(size);
+    game.scene.add(game.debug.axesHelper);
   },
 
   removeAxesHelper() {
@@ -100,21 +122,31 @@ const game = {
   },
 
   addGridHelper(size) {
-    game.scene.add(new THREE.GridHelper(size, size));
+    game.debug.gridHelper = new THREE.GridHelper(size, size);
+    game.scene.add(game.debug.gridHelper);
   },
 
   removeGridHelper() {
     game.scene.remove(game.scene.getObjectByName("GridHelper"));
   },
 
-  initPlayerOnServer() {
+  joinGame() {
     game.socket.emit(
-      "init",
+      "join",
       { payload: "initialization of player" },
       (response) => {
-        console.log("server response: ", response);
+        deserialize(game.world, response, DESERIALIZE_MODE.MAP_REPLACING);
+
+        game.playerId = meQuery(game.world)[0];
+
+        console.log("player joined, playerId: ", game.playerId);
       },
     );
+  },
+
+  leaveGame() {
+    game.socket.emit("leave");
+    game.playerId = undefined;
   },
 
   connectToServer() {
@@ -124,6 +156,8 @@ const game = {
   disconnectFromServer() {
     game.socket.disconnect();
   },
+
+  toggleLabels() {},
 
   cleanUp() {
     window.removeEventListener("resize", onWindowResize, false);
@@ -138,7 +172,9 @@ const game = {
     game.stats.dom.remove();
 
     game.socket.removeAllListeners();
-    game.socket.disconnect();
+    if (game.socket.connected) {
+      game.socket.disconnect();
+    }
   },
 };
 
@@ -150,33 +186,145 @@ function gameLoop(currentTime = 0) {
   oldTime = currentTime;
   accumulator += frameTime;
 
+  const entered = enteredPositionQuery(game.world);
+  if (entered.length > 0) {
+    console.log("+enter query: ", entered);
+    // add threejs cube
+    for (let i = 0; i < entered.length; i++) {
+      const eid = entered[i];
+      const mesh = new THREE.Mesh(
+        new THREE.BoxGeometry(1, 1, 1),
+        new THREE.MeshStandardMaterial({ color: 0x00ff00 }),
+      );
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.position.set(Position.x[eid], Position.y[eid], Position.z[eid]);
+      mesh.name = eid;
+
+      console.log("eid: ", eid, "playerId: ", game.playerId);
+      if (eid === game.playerId) {
+        const playerDiv = document.createElement("div");
+        playerDiv.className = "label";
+        playerDiv.textContent = `you (${game.playerId})`;
+        playerDiv.style.backgroundColor = "transparent";
+        playerDiv.style.color = "white";
+
+        const playerLabel = new CSS2DObject(playerDiv);
+        playerLabel.name = "label";
+        playerLabel.position.set(0, 0, 0);
+        playerLabel.center.set(0.5, 1);
+        mesh.add(playerLabel);
+        playerLabel.layers.set(0);
+        mesh.layers.enableAll();
+      }
+
+      game.scene.add(mesh);
+    }
+  }
+
+  const exited = exitedPositionQuery(game.world);
+  if (exited.length > 0) {
+    console.log("-exit query: ", exited);
+    for (let i = 0; i < exited.length; i++) {
+      const eid = exited[i];
+      const mesh = game.scene.getObjectByName(eid);
+      mesh.remove(mesh.getObjectByName("label"));
+      game.scene.remove(mesh);
+    }
+  }
+
   while (accumulator >= game.config.dt) {
-    // TODO: put the rendering outside of the tick rate,
-    // rendering shouldn't be restricted to the tick rate
-    game.renderer.render(game.scene, game.camera);
-    game.stats.update();
-    game.controls.update();
+    // game logic
 
-    const ents = positionQuery(game.world);
-    for (let i = 0; i < ents.length; i++) {
-      const ent = ents[i];
-      Position.x[ent];
-
-    }
-
-    if (game.keyboard.f) {
-      game.socket.emit("input", {
-        addCube: true,
-      });
-    }
+    // Update positions
+    positionQuery(game.world).forEach((eid) => {
+      game.scene
+        .getObjectByName(eid)
+        ?.position?.set(Position.x[eid], Position.y[eid], Position.z[eid]);
+    });
 
     // NOTE: Don't change these lines, needed for the game loop
     accumulator -= game.config.dt;
     game.currentTick++;
   }
 
+  // TODO: put the rendering outside of the tick rate,
+  // rendering shouldn't be restricted to the tick rate
+  game.renderer.render(game.scene, game.camera);
+  game.labelRenderer.render(game.scene, game.camera);
+  game.stats.update();
+  game.controls.update();
+
+  const ents = positionQuery(game.world);
+  for (let i = 0; i < ents.length; i++) {
+    const ent = ents[i];
+    Position.x[ent];
+  }
+
+  if (game.playerId >= 0) {
+    const inputPayload = getInputPayload();
+    if (inputPayload) {
+      game.socket.emit("input", inputPayload);
+    }
+  }
+
   // NOTE: gameLoopRequestId is used later to cancel the game loop in cleanUp()
   game.gameLoopRequestId = window.requestAnimationFrame(gameLoop);
+}
+
+function getInputPayload() {
+  const inputPayload = {
+    x: 0,
+    z: 0,
+    shift: false,
+    space: false,
+    left: game.mouse.left,
+    right: game.mouse.right,
+  };
+
+  let hasInput = false;
+
+  if (game.keyboard.w) {
+    inputPayload.x = 1;
+    hasInput = true;
+  }
+
+  if (game.keyboard.s) {
+    inputPayload.x = -1;
+    hasInput = true;
+  }
+
+  if (game.keyboard.a) {
+    inputPayload.z = -1;
+    hasInput = true;
+  }
+
+  if (game.keyboard.d) {
+    inputPayload.z = 1;
+    hasInput = true;
+  }
+
+  if (game.keyboard[" "]) {
+    inputPayload.space = true;
+    hasInput = true;
+  }
+
+  if (game.keyboard.shift) {
+    inputPayload.shift = true;
+    hasInput = true;
+  }
+
+  if (game.mouse.left) {
+    inputPayload.left = true;
+    hasInput = true;
+  }
+
+  if (game.mouse.right) {
+    inputPayload.right = true;
+    hasInput = true;
+  }
+
+  return hasInput ? inputPayload : undefined;
 }
 
 function setupThree() {
@@ -191,25 +339,23 @@ function setupThree() {
 
   game.renderer = new THREE.WebGLRenderer({
     antialias: game.config.antialias,
-    canvas: document.getElementById("gameCanvas"),
+    canvas: document.getElementById(game.config.canvasId),
   });
   game.renderer.setSize(window.innerWidth, window.innerHeight);
   // for retina displays (macs, phones, etc.)
   game.renderer.setPixelRatio(window.devicePixelRatio);
-  // gameWorld.renderer.shadowMap.enabled = true;
-  game.parentDiv.appendChild(game.renderer.domElement);
+  game.renderer.shadowMap.enabled = true;
 
   game.clock = new THREE.Clock();
-  game.controls = new OrbitControls(game.camera, game.renderer.domElement);
+  // game.controls = new OrbitControls(game.camera, game.renderer.domElement);
   game.stats = Stats();
-  game.parentDiv.appendChild(game.stats.dom);
+  document.body.appendChild(game.stats.dom);
 
   // ambient light which is for the whole scene
   game.ambientLight = new THREE.AmbientLight(
     game.config.ambientLight.color,
     game.config.ambientLight.intensity,
   );
-  game.ambientLight.castShadow = true;
   game.scene.add(game.ambientLight);
 
   // directional light - parallel sun rays
@@ -222,6 +368,14 @@ function setupThree() {
     ...Object.values(game.config.directionalLight.position),
   );
   game.scene.add(game.directionalLight);
+
+  game.labelRenderer = new CSS2DRenderer();
+  game.labelRenderer.setSize(window.innerWidth, window.innerHeight);
+  game.labelRenderer.domElement.style.position = "absolute";
+  game.labelRenderer.domElement.style.top = "0px";
+  document.body.appendChild(game.labelRenderer.domElement);
+
+  game.controls = new OrbitControls(game.camera, game.labelRenderer.domElement);
 }
 
 function setupEventListeners() {
@@ -238,22 +392,23 @@ function onWindowResize() {
   game.camera.aspect = window.innerWidth / window.innerHeight;
   game.camera.updateProjectionMatrix();
   game.renderer.setSize(window.innerWidth, window.innerHeight);
+  game.labelRenderer.setSize(window.innerWidth, window.innerHeight);
 }
 
 function onKeyDown(event) {
-  console.log("key down:", event.key);
+  // console.log("key down:", event.key);
   game.keyboard[event.key.toLowerCase()] = true;
 
   if (game.keyboard["shift"] && game.keyboard["control"]) {
     if (game.keyboard.d) {
-      game.debug = !game.debug;
-      console.log("debug: ", game.debug);
+      game.debug.enabled = !game.debug.enabled;
+      console.log("Debug mode ", game.debug.enabled ? "ON" : "OFF");
     }
   }
 }
 
 function onKeyUp(event) {
-  console.log("key up:", event.key);
+  // console.log("key up:", event.key);
   game.keyboard[event.key.toLowerCase()] = false;
 }
 
@@ -303,14 +458,19 @@ function setupSocketIO() {
   });
 
   game.socket.on("update", (payload) => {
-    game.deserialize(game.world, payload);
-    console.log(game.world);
+    // console.log(payload);
+    // resetWorld(game.world);
+    // resetGlobals();
+    // deserialize(game.world, payload, DESERIALIZE_MODE.MAP);
+    // resetWorld(game.world);
+    // resetGlobals();
+    deserialize(game.world, payload, DESERIALIZE_MODE.MAP_REPLACING);
+    console.log(getAllEntities(game.world));
   });
 }
 
 function setupECSWorld() {
   game.world = createWorld();
-  game.deserialize = defineDeserializer(game.world);
 
   registerComponent(game.world, Position);
 }

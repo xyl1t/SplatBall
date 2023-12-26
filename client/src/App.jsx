@@ -1,32 +1,35 @@
 import { useEffect } from "react";
-import * as THREE from "three";
 import { GUI } from "dat.gui";
 import game from "./lib/game";
-import { useState } from "react";
 
 export default function App() {
-  const [isSetup, setIsSetup] = useState(false);
-
-  console.log("DEBUG", game.debug);
+  if (game.debug.enabled) {
+    console.log("Debug mode ON");
+  }
 
   // Setup
   useEffect(() => {
-    if (isSetup && game.debug) return;
-    setIsSetup(true);
-
-    console.log(game);
     game.setup({
-      parentDivId: "app",
+      canvasId: "gameCanvas",
       initialCameraPosition: {
         x: 2,
         y: 4,
         z: 8,
       },
+      directionalLight: {
+        position: {
+          x: 300,
+          y: 200,
+          z: 100,
+        },
+      },
       antialias: false,
     });
 
-    game.addAxesHelper(10);
-    game.addGridHelper(15);
+    if (game.debug.enabled) {
+      game.addAxesHelper(10);
+      game.addGridHelper(15);
+    }
 
     game.startGameLoop();
 
@@ -35,26 +38,34 @@ export default function App() {
     const socketFolder = gui.addFolder("socket settings");
     socketFolder.add(game.socket, "connected").name("Is conected").listen();
     socketFolder
-      .add({ btn: () => game.initPlayerOnServer() }, "btn")
-      .name("Initialize player");
-    socketFolder
       .add({ btn: () => game.connectToServer() }, "btn")
       .name("connect");
+    socketFolder.add({ btn: () => game.joinGame() }, "btn").name("Join game");
+    socketFolder.add({ btn: () => game.leaveGame() }, "btn").name("Leave game");
     socketFolder
       .add({ btn: () => game.disconnectFromServer() }, "btn")
       .name("disconnect");
     socketFolder.open();
 
+    if (game.debug.enabled) {
+      const debugFolder = gui.addFolder("debug");
+      debugFolder.add(game, "toggleLabels").name("Show EID's");
+      debugFolder.add(game.debug.axesHelper, "visible").name("Show axes");
+      debugFolder.add(game.debug.gridHelper, "visible").name("Show grid");
+      debugFolder.open();
+    }
+
     return () => {
       console.log("cleanup");
-      if (!game.debug) {
-        game.cleanUp();
-        gui.destroy();
-      }
+      game.cleanUp();
+      gui.destroy();
     };
   }, []);
 
-  return <div id="app">
-    <canvas id="gameCanvas"></canvas>
-  </div>;
+  return (
+    <div id="app">
+      <canvas id="gameCanvas"></canvas>
+      <div id="debug"></div>
+    </div>
+  );
 }
