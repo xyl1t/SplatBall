@@ -59,6 +59,12 @@ io.on("connection", (socket) => {
       const playerId = addEntity(world);
       socket.eid = playerId;
       playerSockets[playerId] = socket;
+      socket.input = {
+        x: 0,
+        z: 0,
+        space: false,
+        shift: false,
+      };
 
       addComponent(world, Position, playerId);
       Position.x[playerId] = (Math.random() * 2 - 1) * 7;
@@ -85,19 +91,7 @@ io.on("connection", (socket) => {
   socket.on("input", (payload) => {
     logger.event("input", "client message:", payload);
 
-    if (payload.x) {
-      Position.x[socket.eid] += 1 * game.config.dt * payload.x;
-    }
-    if (payload.z) {
-      Position.z[socket.eid] += 1 * game.config.dt * payload.z;
-    }
-
-    if (payload.space) {
-      Position.y[socket.eid] += 1 * game.config.dt;
-    }
-    if (payload.shift) {
-      Position.y[socket.eid] -= 1 * game.config.dt;
-    }
+    socket.input = payload;
   });
 
   socket.on("debug", (payload) => {
@@ -126,6 +120,27 @@ setInterval(() => {
   while (accumulator >= game.config.dt) {
     // for (const socket of connectedSockets) {
     for (const socket of Object.values(playerSockets)) {
+
+      const speed = 3;
+      if (socket?.input?.x) {
+        Position.x[socket.eid] += speed * game.config.dt * socket.input.x;
+      }
+      if (socket?.input?.z) {
+        Position.z[socket.eid] += speed * game.config.dt * socket.input.z;
+      }
+
+      if (socket?.input?.space) {
+        Position.y[socket.eid] += speed * game.config.dt;
+      }
+      if (socket?.input?.shift) {
+        Position.y[socket.eid] -= speed * game.config.dt;
+      }
+
+      socket.input.x = 0;
+      socket.input.z = 0;
+      socket.input.space = false;
+      socket.input.shift = false;
+
       const payload = serialize(world);
       socket.emit("update", payload);
     }
