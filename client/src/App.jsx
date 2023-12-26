@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { GUI } from "dat.gui";
+import GUI from "lil-gui";
 import game from "./lib/game";
 
 export default function App() {
