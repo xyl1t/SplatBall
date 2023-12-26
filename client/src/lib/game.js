@@ -15,8 +15,9 @@ import {
   getAllEntities,
   registerComponent,
   exitQuery,
+  getEntityComponents,
 } from "bitecs";
-import { Me, Position, deserialize } from "shared";
+import { componentNames, Me, Position, deserialize } from "shared";
 const URL =
   process.env.NODE_ENV === "production" ? undefined : "http://localhost:8080";
 
@@ -28,8 +29,8 @@ const exitedPositionQuery = exitQuery(positionQuery);
 const game = {
   // NOTE: this is the default config
   config: {
-    canvasId: "gameCanvas",
-    debugDivId: "debug",
+    // canvasId: "gameCanvas",
+    parentDivId: "gameDiv",
     antialias: true,
     fov: 75,
     nearPlane: 1,
@@ -54,17 +55,9 @@ const game = {
     },
     tickrate: 30,
     dt: 1 / 30,
-    debug: false,
   },
 
   isSetup: false,
-  debug: {
-    enabled: (window.DEBUG = window.location.search.includes("debug")),
-    domElement: undefined,
-    gridHelper: undefined,
-    axesHelper: undefined,
-    labels: undefined,
-  },
 
   currentTick: 0,
 
@@ -74,8 +67,11 @@ const game = {
   clock: undefined,
   controls: undefined,
   stats: undefined,
+  labelRenderer: undefined,
   ambientLight: undefined,
   directionalLight: undefined,
+
+  parentDiv: undefined,
 
   socket: undefined,
 
@@ -90,16 +86,65 @@ const game = {
     right: false,
   },
   inputQueue: [], // TODO: implement input queue
+
   gameLoopRequestId: undefined,
+
+  debug: {
+    enabled: (window.location.search.includes("debug")),
+    domElement: undefined,
+    gridHelper: undefined,
+    axesHelper: undefined,
+    labels: {
+      eids: true,
+      components: false,
+      componentDetails: true,
+      update: function () {
+        positionQuery(game.world).forEach((eid) => {
+          const obj = game.scene.getObjectByName(eid);
+          let textContent = "";
+          if (game.debug.labels.eids)
+            textContent += `eid: ${eid} ${
+              eid == game.playerId ? "(you)" : ""
+            }\n`;
+          if (game.debug.labels.components) {
+            textContent += "Components:\n";
+            textContent += getEntityComponents(game.world, eid)
+              .map(
+                (c) =>
+                  "- " +
+                  componentNames.get(c) +
+                  (game.debug.labels.componentDetails
+                    ? "\n  " +
+                      Object.values(c)
+                        .map((v) => {
+                          if (typeof v[eid] === "number") {
+                            return v[eid].toFixed(3);
+                          }
+                          return v[eid];
+                        })
+                        .join("\n  ")
+                    : ""),
+              )
+              .join("\n");
+          }
+
+          obj.getObjectByName("label").element.textContent = textContent;
+        });
+      },
+    },
+  },
 
   setup(config) {
     game.config = deepMerge(game.config, config); // overwrite default config with user config
 
-    // if (game.config.parentDivId) {
-    //   game.parentDiv = document.getElementById(game.config.parentDivId);
-    // }
+    if (game.config.parentDivId) {
+      game.parentDiv = document.getElementById(game.config.parentDivId);
+    } else {
+      game.parentDiv = document.body;
+    }
 
     setupThree();
+    setupDebugView();
     setupEventListeners();
     setupSocketIO();
     setupECSWorld();
@@ -112,22 +157,44 @@ const game = {
     game.gameLoopRequestId = window.requestAnimationFrame(gameLoop);
   },
 
+  toggleDebug() {
+    // game.debug.enabled = !game.debug.enabled;
+    console.log("Debug mode ", game.debug.enabled ? "ON" : "OFF");
+    if (game.debug.enabled) {
+      game.debug.axesHelper.visible = true;
+      game.debug.gridHelper.visible = true;
+      game.debug.labels.eids = true;
+      game.debug.labels.components = false;
+      game.debug.labels.componentDetails = true;
+      game.camera.layers.enable(1);
+    } else {
+      game.debug.axesHelper.visible = false;
+      game.debug.gridHelper.visible = false;
+      game.debug.labels.eids = false;
+      game.debug.labels.components = false;
+      game.debug.labels.componentDetails = false;
+      game.camera.layers.disable(1);
+    }
+  },
+
   addAxesHelper(size) {
     game.debug.axesHelper = new THREE.AxesHelper(size);
+    game.debug.axesHelper.name = "DebugAxesHelper";
     game.scene.add(game.debug.axesHelper);
   },
 
   removeAxesHelper() {
-    game.scene.remove(game.scene.getObjectByName("AxesHelper"));
+    game.scene.remove(game.scene.getObjectByName("DebugAxesHelper"));
   },
 
   addGridHelper(size) {
     game.debug.gridHelper = new THREE.GridHelper(size, size);
+    game.debug.gridHelper.name = "DebugGridHelper";
     game.scene.add(game.debug.gridHelper);
   },
 
   removeGridHelper() {
-    game.scene.remove(game.scene.getObjectByName("GridHelper"));
+    game.scene.remove(game.scene.getObjectByName("DebugGridHelper"));
   },
 
   joinGame() {
@@ -169,7 +236,11 @@ const game = {
     window.removeEventListener("mouseleave", onMouseLeave, false);
     window.cancelAnimationFrame(game.gameLoopRequestId);
 
-    game.stats.dom.remove();
+    game.renderer.domElement.remove();
+
+    game.stats?.dom.remove();
+
+    game.labelRenderer.domElement.remove();
 
     game.socket.removeAllListeners();
     if (game.socket.connected) {
@@ -202,24 +273,42 @@ function gameLoop(currentTime = 0) {
       mesh.name = eid;
 
       console.log("eid: ", eid, "playerId: ", game.playerId);
-      if (eid === game.playerId) {
-        const playerDiv = document.createElement("div");
-        playerDiv.className = "label";
-        playerDiv.textContent = `you (${game.playerId})`;
-        playerDiv.style.backgroundColor = "transparent";
-        playerDiv.style.color = "white";
+      // TODO: update label content
+      const playerDiv = document.createElement("div");
+      playerDiv.className = "label";
 
-        const playerLabel = new CSS2DObject(playerDiv);
-        playerLabel.name = "label";
-        playerLabel.position.set(0, 0, 0);
-        playerLabel.center.set(0.5, 1);
-        mesh.add(playerLabel);
-        playerLabel.layers.set(0);
-        mesh.layers.enableAll();
-      }
+      console.log(
+        getEntityComponents(game.world, eid).map((c) =>
+          Object.values(c)
+            .map((v) => v[eid] + "\n")
+            .join("\n"),
+        ),
+      );
+      playerDiv.style.fontFamily = "monospace";
+
+      // const pos = getEntityComponents(game.world, eid)[0];
+      // console.log(getWorldComponents(game.world));
+      // console.log(ComponentNames[pos]);
+      // console.log(pos);
+      // console.log(Position);
+
+      playerDiv.style.backgroundColor = "transparent";
+      playerDiv.style.color = "white";
+      playerDiv.style.whiteSpace = "pre";
+
+      const playerLabel = new CSS2DObject(playerDiv);
+      playerLabel.name = "label";
+      playerLabel.position.set(0, 0, 0);
+      playerLabel.center.set(0, 0);
+      playerLabel.layers.set(1);
+      mesh.add(playerLabel);
+      // playerLabel.layers.set(0);
+      // mesh.layers.enableAll();
 
       game.scene.add(mesh);
     }
+
+    if (game.debug.enabled) game.debug.labels.update();
   }
 
   const exited = exitedPositionQuery(game.world);
@@ -243,16 +332,18 @@ function gameLoop(currentTime = 0) {
         ?.position?.set(Position.x[eid], Position.y[eid], Position.z[eid]);
     });
 
+    if (game.debug.enabled) {
+      game.debug.labels.update();
+    }
+
     // NOTE: Don't change these lines, needed for the game loop
     accumulator -= game.config.dt;
     game.currentTick++;
   }
 
-  // TODO: put the rendering outside of the tick rate,
-  // rendering shouldn't be restricted to the tick rate
   game.renderer.render(game.scene, game.camera);
-  game.labelRenderer.render(game.scene, game.camera);
-  game.stats.update();
+  game.labelRenderer?.render(game.scene, game.camera);
+  game.stats?.update();
   game.controls.update();
 
   const ents = positionQuery(game.world);
@@ -339,17 +430,16 @@ function setupThree() {
 
   game.renderer = new THREE.WebGLRenderer({
     antialias: game.config.antialias,
-    canvas: document.getElementById(game.config.canvasId),
+    // canvas: document.getElementById(game.config.canvasId),
   });
   game.renderer.setSize(window.innerWidth, window.innerHeight);
   // for retina displays (macs, phones, etc.)
   game.renderer.setPixelRatio(window.devicePixelRatio);
   game.renderer.shadowMap.enabled = true;
+  game.parentDiv.appendChild(game.renderer.domElement);
 
   game.clock = new THREE.Clock();
   // game.controls = new OrbitControls(game.camera, game.renderer.domElement);
-  game.stats = Stats();
-  document.body.appendChild(game.stats.dom);
 
   // ambient light which is for the whole scene
   game.ambientLight = new THREE.AmbientLight(
@@ -369,13 +459,27 @@ function setupThree() {
   );
   game.scene.add(game.directionalLight);
 
+  game.controls = new OrbitControls(game.camera, game.parentDiv);
+}
+
+function setupDebugView() {
+  if (game.debug.enabled) {
+    game.stats = new Stats();
+    game.stats.showPanel(0);
+    game.parentDiv.appendChild(game.stats.dom);
+
+    game.addAxesHelper(10);
+    game.addGridHelper(15);
+
+    game.camera.layers.enable(1); // show label layer
+  }
+
+
   game.labelRenderer = new CSS2DRenderer();
   game.labelRenderer.setSize(window.innerWidth, window.innerHeight);
   game.labelRenderer.domElement.style.position = "absolute";
   game.labelRenderer.domElement.style.top = "0px";
-  document.body.appendChild(game.labelRenderer.domElement);
-
-  game.controls = new OrbitControls(game.camera, game.labelRenderer.domElement);
+  game.parentDiv.appendChild(game.labelRenderer.domElement);
 }
 
 function setupEventListeners() {
@@ -401,9 +505,11 @@ function onKeyDown(event) {
 
   if (game.keyboard["shift"] && game.keyboard["control"]) {
     if (game.keyboard.d) {
-      game.debug.enabled = !game.debug.enabled;
-      console.log("Debug mode ", game.debug.enabled ? "ON" : "OFF");
+      game.toggleDebug();
     }
+  }
+  if (game.keyboard["j"]) {
+    game.joinGame();
   }
 }
 
