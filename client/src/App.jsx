@@ -33,8 +33,6 @@ export default function App() {
 
     game.startGameLoop();
 
-
-
     const gui = new GUI();
 
     const socketFolder = gui.addFolder("socket settings");
