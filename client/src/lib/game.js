@@ -280,18 +280,9 @@ function gameLoop(currentTime = 0) {
       mesh.position.set(Position.x[eid], Position.y[eid], Position.z[eid]);
       mesh.name = eid;
 
-      console.log("eid: ", eid, "playerId: ", game.playerId);
       // TODO: update label content
       const playerDiv = document.createElement("div");
       playerDiv.className = "label";
-
-      console.log(
-        getEntityComponents(game.world, eid).map((c) =>
-          Object.values(c)
-            .map((v) => v[eid] + "\n")
-            .join("\n"),
-        ),
-      );
       playerDiv.style.fontFamily = "monospace";
 
       // const pos = getEntityComponents(game.world, eid)[0];
