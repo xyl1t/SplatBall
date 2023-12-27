@@ -21,7 +21,7 @@ const io = new Server(server, {
   },
 });
 
-app.use(express.static("client/dist"));
+app.use(express.static("../client/dist"));
 app.use(cors());
 
 logger.addWithSubType("event", colors.fgMagenta);
@@ -29,7 +29,8 @@ logger.addType("server", colors.fgWhite);
 
 // world.name = "SplatBallEcsWorld";
 const connectedSockets = [];
-const playerSockets = {};
+const subscribedSockets = new Set();
+const inGameSockets = new Set(); // NOTE: actually in game players, but stored as sockets (sockets also have an entity id property)
 
 const game = {
   config: {
@@ -47,6 +48,18 @@ io.on("connection", (socket) => {
 
   connectedSockets.push(socket);
 
+  socket.eid = null;
+
+  socket.on("subscribe", (payload) => {
+    logger.event("subscribe", "client message:", payload);
+    subscribedSockets.add(socket);
+  });
+
+  socket.on("unsubscribe", (payload) => {
+    logger.event("unsubscribe", "client message:", payload);
+    subscribedSockets.delete(socket);
+  });
+
   socket.on("join", (payload, callback) => {
     logger.event("join", "client message:", payload);
     if (socket.eid) {
@@ -58,7 +71,9 @@ io.on("connection", (socket) => {
     } else {
       const playerId = addEntity(world);
       socket.eid = playerId;
-      playerSockets[playerId] = socket;
+      inGameSockets.add(socket);
+      subscribedSockets.add(socket);
+      // playerSockets[playerId] = socket;
       socket.input = {
         x: 0,
         z: 0,
@@ -101,7 +116,8 @@ io.on("connection", (socket) => {
   socket.on("disconnect", (reason) => {
     logger.event(red("disconnect"), "socket id:", socket.id, "Reason:", reason);
     removeEntity(world, socket.eid);
-    delete playerSockets[socket.eid];
+    inGameSockets.delete(socket);
+    // delete playerSockets[socket.eid];
     connectedSockets.splice(connectedSockets.indexOf(socket), 1);
   });
 });
@@ -119,8 +135,8 @@ setInterval(() => {
   // logger.debug("accumulator", accumulator, "dt", game.config.dt);
   while (accumulator >= game.config.dt) {
     // for (const socket of connectedSockets) {
-    for (const socket of Object.values(playerSockets)) {
-
+    // for (const socket of Object.values(playerSockets)) {
+    for (const socket of inGameSockets) {
       const speed = 3;
       if (socket?.input?.x) {
         Position.x[socket.eid] += speed * game.config.dt * socket.input.x;
@@ -140,7 +156,9 @@ setInterval(() => {
       socket.input.z = 0;
       socket.input.space = false;
       socket.input.shift = false;
+    }
 
+    for (const socket of subscribedSockets) {
       const payload = serialize(world);
       socket.emit("update", payload);
     }

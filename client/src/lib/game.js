@@ -197,6 +197,14 @@ const game = {
     game.scene.remove(game.scene.getObjectByName("DebugGridHelper"));
   },
 
+  subscribeToUpdates() {
+    game.socket.emit("subscribe");
+  },
+
+  unsubscribeFromUpdates() {
+    game.socket.emit("unsubscribe");
+  },
+
   joinGame() {
     game.socket.emit(
       "join",
