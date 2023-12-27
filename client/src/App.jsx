@@ -46,16 +46,16 @@ export default function App() {
       const eventsFolder = socketFolder.addFolder("Events");
       eventsFolder.add({ btn: () => game.subscribeToUpdates() }, "btn").name("Subscribe to updates");
       eventsFolder.add({ btn: () => game.unsubscribeFromUpdates() }, "btn").name("Unsubscribe from updates");
-      eventsFolder.add({ btn: () => game.joinGame() }, "btn").name("Join game");
+      eventsFolder.add({ btn: () => game.joinGame() }, "btn").name("Join game [J]");
       eventsFolder.add({ btn: () => game.leaveGame() }, "btn").name("Leave game");
       socketFolder.open();
 
-      const debugFolder = gui.addFolder("Debug");
+      const debugFolder = gui.addFolder("Debug [F12] or [ctrl] [shift] [d]");
       debugFolder
         .add(game.debug, "enabled")
         .name("Debug view")
         .listen()
-        .onChange(() => game.toggleDebug());
+        .onChange((isEnabled) => game.setDebug(isEnabled));
 
       debugFolder.add(game.debug.axesHelper, "visible").listen().name("Show axes");
       debugFolder.add(game.debug.gridHelper, "visible").listen().name("Show grid");
