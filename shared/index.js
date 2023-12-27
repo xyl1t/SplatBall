@@ -16,7 +16,7 @@ export const componentNames = new Map();
 componentNames.set(Position, varToString({ Position }));
 componentNames.set(Me, varToString({ Me }));
 
-const serializationConfig = [Position, Me];
+const serializationConfig = Array.from(componentNames.keys());
 
 export const serialize = defineSerializer(serializationConfig);
 export const deserialize = defineDeserializer(serializationConfig);
