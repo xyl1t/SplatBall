@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { GUI } from "dat.gui";
+import GUI from "lil-gui";
 import game from "./lib/game";
 
 export default function App() {
@@ -32,19 +32,25 @@ export default function App() {
     if (game.debug.enabled) {
       gui = new GUI();
 
-      const socketFolder = gui.addFolder("socket settings");
-      socketFolder.add(game.socket, "connected").name("Is conected").listen();
-      socketFolder
+      const socketFolder = gui.addFolder("Socket settings");
+
+      const connectionFolder = socketFolder.addFolder("Connection");
+      connectionFolder.add(game.socket, "connected").name("Connection status").listen().disable();
+      connectionFolder
         .add({ btn: () => game.connectToServer() }, "btn")
-        .name("connect");
-      socketFolder.add({ btn: () => game.joinGame() }, "btn").name("Join game");
-      socketFolder.add({ btn: () => game.leaveGame() }, "btn").name("Leave game");
-      socketFolder
+        .name("Connect");
+      connectionFolder
         .add({ btn: () => game.disconnectFromServer() }, "btn")
-        .name("disconnect");
+        .name("Disconnect");
+
+      const eventsFolder = socketFolder.addFolder("Events");
+      eventsFolder.add({ btn: () => game.subscribeToUpdates() }, "btn").name("Subscribe to updates");
+      eventsFolder.add({ btn: () => game.unsubscribeFromUpdates() }, "btn").name("Unsubscribe from updates");
+      eventsFolder.add({ btn: () => game.joinGame() }, "btn").name("Join game");
+      eventsFolder.add({ btn: () => game.leaveGame() }, "btn").name("Leave game");
       socketFolder.open();
 
-      const debugFolder = gui.addFolder("debug");
+      const debugFolder = gui.addFolder("Debug");
       debugFolder
         .add(game.debug, "enabled")
         .name("Debug view")
@@ -53,7 +59,7 @@ export default function App() {
 
       debugFolder.add(game.debug.axesHelper, "visible").listen().name("Show axes");
       debugFolder.add(game.debug.gridHelper, "visible").listen().name("Show grid");
-      const labelFolder = debugFolder.addFolder("labels");
+      const labelFolder = debugFolder.addFolder("Labels");
       labelFolder
         .add(game.debug.labels, "eids")
         .listen()
