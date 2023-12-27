@@ -53,8 +53,9 @@ const game = {
       y: 5,
       z: 5,
     },
-    tickrate: 30,
-    dt: 1 / 30,
+    tickrate: 20,
+    dt: 1 / 20,
+    lerp: 0.125,
   },
 
   isSetup: false,
@@ -157,10 +158,11 @@ const game = {
     game.gameLoopRequestId = window.requestAnimationFrame(gameLoop);
   },
 
-  toggleDebug() {
+  setDebug(enabled) {
     // game.debug.enabled = !game.debug.enabled;
     console.log("Debug mode ", game.debug.enabled ? "ON" : "OFF");
-    if (game.debug.enabled) {
+    game.debug.enabled = enabled;
+    if (enabled) {
       game.debug.axesHelper.visible = true;
       game.debug.gridHelper.visible = true;
       game.debug.labels.eids = true;
@@ -175,6 +177,10 @@ const game = {
       game.debug.labels.componentDetails = false;
       game.camera.layers.disable(1);
     }
+  },
+
+  toggleDebug() {
+      game.setDebug(!game.debug.enabled);
   },
 
   addAxesHelper(size) {
@@ -283,7 +289,8 @@ function gameLoop(currentTime = 0) {
       // TODO: update label content
       const playerDiv = document.createElement("div");
       playerDiv.className = "label";
-      playerDiv.style.fontFamily = "monospace";
+      // playerDiv.style.fontFamily = "monospace";
+      playerDiv.className = "font-mono text-[9px]";
 
       // const pos = getEntityComponents(game.world, eid)[0];
       // console.log(getWorldComponents(game.world));
@@ -321,35 +328,42 @@ function gameLoop(currentTime = 0) {
     }
   }
 
-  while (accumulator >= game.config.dt) {
-    // game logic
+  // TODO: do we even need a loop with fixed timestep?
+  // while (accumulator >= game.config.dt) {
+  //   // game logic
+  //   // NOTE: Don't change these lines, needed for the game loop
+  //   accumulator -= game.config.dt;
+  //   game.currentTick++;
+  // }
 
     // Update positions
     positionQuery(game.world).forEach((eid) => {
-      game.scene
-        .getObjectByName(eid)
-        ?.position?.set(Position.x[eid], Position.y[eid], Position.z[eid]);
+
+      const obj = game.scene.getObjectByName(eid);
+
+      const newPos = new THREE.Vector3(
+        Position.x[eid],
+        Position.y[eid],
+        Position.z[eid],
+      );
+
+      obj?.position?.lerp(newPos, game.config.lerp);
     });
 
     if (game.debug.enabled) {
       game.debug.labels.update();
     }
 
-    // NOTE: Don't change these lines, needed for the game loop
-    accumulator -= game.config.dt;
-    game.currentTick++;
-  }
-
   game.renderer.render(game.scene, game.camera);
   game.labelRenderer?.render(game.scene, game.camera);
   game.stats?.update();
   game.controls.update();
 
-  const ents = positionQuery(game.world);
-  for (let i = 0; i < ents.length; i++) {
-    const ent = ents[i];
-    Position.x[ent];
-  }
+  // const ents = positionQuery(game.world);
+  // for (let i = 0; i < ents.length; i++) {
+  //   const ent = ents[i];
+  //   Position.x[ent];
+  // }
 
   if (game.playerId >= 0) {
     const inputPayload = getInputPayload();
@@ -360,6 +374,10 @@ function gameLoop(currentTime = 0) {
 
   // NOTE: gameLoopRequestId is used later to cancel the game loop in cleanUp()
   game.gameLoopRequestId = window.requestAnimationFrame(gameLoop);
+}
+
+function lerp(a, b, t) {
+  return a + (b - a) * t;
 }
 
 function getInputPayload() {
@@ -499,7 +517,7 @@ function onWindowResize() {
 }
 
 function onKeyDown(event) {
-  // console.log("key down:", event.key);
+  console.log("key down:", event.key);
   game.keyboard[event.key.toLowerCase()] = true;
 
   if (game.keyboard["shift"] && game.keyboard["control"]) {
@@ -507,6 +525,11 @@ function onKeyDown(event) {
       game.toggleDebug();
     }
   }
+
+  if (game.keyboard["f12"]) {
+    game.toggleDebug();
+  }
+
   if (game.keyboard["j"]) {
     game.joinGame();
   }
@@ -563,12 +586,6 @@ function setupSocketIO() {
   });
 
   game.socket.on("update", (payload) => {
-    // console.log(payload);
-    // resetWorld(game.world);
-    // resetGlobals();
-    // deserialize(game.world, payload, DESERIALIZE_MODE.MAP);
-    // resetWorld(game.world);
-    // resetGlobals();
     deserialize(game.world, payload, DESERIALIZE_MODE.MAP_REPLACING);
     console.log(getAllEntities(game.world));
   });
