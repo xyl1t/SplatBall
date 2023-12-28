@@ -55,7 +55,7 @@ const game = {
     },
     tickrate: 20,
     dt: 1 / 20,
-    lerp: 0.125,
+    lerpRatio: 0.125,
   },
 
   isSetup: false,
@@ -347,7 +347,7 @@ function gameLoop(currentTime = 0) {
         Position.z[eid],
       );
 
-      obj?.position?.lerp(newPos, game.config.lerp);
+      obj?.position?.lerp(newPos, game.config.lerpRatio);
     });
 
     if (game.debug.enabled) {
