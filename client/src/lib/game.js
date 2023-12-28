@@ -288,19 +288,7 @@ function gameLoop(currentTime = 0) {
 
       // TODO: update label content
       const playerDiv = document.createElement("div");
-      playerDiv.className = "label";
-      // playerDiv.style.fontFamily = "monospace";
-      playerDiv.className = "font-mono text-[9px]";
-
-      // const pos = getEntityComponents(game.world, eid)[0];
-      // console.log(getWorldComponents(game.world));
-      // console.log(ComponentNames[pos]);
-      // console.log(pos);
-      // console.log(Position);
-
-      playerDiv.style.backgroundColor = "transparent";
-      playerDiv.style.color = "white";
-      playerDiv.style.whiteSpace = "pre";
+      playerDiv.className = "font-mono text-[9px] bg-transparent text-white whitespace-pre";
 
       const playerLabel = new CSS2DObject(playerDiv);
       playerLabel.name = "label";
@@ -308,8 +296,6 @@ function gameLoop(currentTime = 0) {
       playerLabel.center.set(0, 0);
       playerLabel.layers.set(1);
       mesh.add(playerLabel);
-      // playerLabel.layers.set(0);
-      // mesh.layers.enableAll();
 
       game.scene.add(mesh);
     }
@@ -336,34 +322,28 @@ function gameLoop(currentTime = 0) {
   //   game.currentTick++;
   // }
 
-    // Update positions
-    positionQuery(game.world).forEach((eid) => {
+  // Update positions
+  positionQuery(game.world).forEach((eid) => {
 
-      const obj = game.scene.getObjectByName(eid);
+    const obj = game.scene.getObjectByName(eid);
 
-      const newPos = new THREE.Vector3(
-        Position.x[eid],
-        Position.y[eid],
-        Position.z[eid],
-      );
+    const newPos = new THREE.Vector3(
+      Position.x[eid],
+      Position.y[eid],
+      Position.z[eid],
+    );
 
-      obj?.position?.lerp(newPos, game.config.lerpRatio);
-    });
+    obj?.position?.lerp(newPos, game.config.lerpRatio);
+  });
 
-    if (game.debug.enabled) {
-      game.debug.labels.update();
-    }
+  if (game.debug.enabled) {
+    game.debug.labels.update();
+  }
 
   game.renderer.render(game.scene, game.camera);
   game.labelRenderer?.render(game.scene, game.camera);
   game.stats?.update();
   game.controls.update();
-
-  // const ents = positionQuery(game.world);
-  // for (let i = 0; i < ents.length; i++) {
-  //   const ent = ents[i];
-  //   Position.x[ent];
-  // }
 
   if (game.playerId >= 0) {
     const inputPayload = getInputPayload();
@@ -374,10 +354,6 @@ function gameLoop(currentTime = 0) {
 
   // NOTE: gameLoopRequestId is used later to cancel the game loop in cleanUp()
   game.gameLoopRequestId = window.requestAnimationFrame(gameLoop);
-}
-
-function lerp(a, b, t) {
-  return a + (b - a) * t;
 }
 
 function getInputPayload() {
