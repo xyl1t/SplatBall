@@ -53,8 +53,9 @@ const game = {
       y: 5,
       z: 5,
     },
-    tickrate: 30,
-    dt: 1 / 30,
+    tickrate: 20,
+    dt: 1 / 20,
+    lerpRatio: 0.125,
   },
 
   isSetup: false,
@@ -90,7 +91,7 @@ const game = {
   gameLoopRequestId: undefined,
 
   debug: {
-    enabled: (window.location.search.includes("debug")),
+    enabled: window.location.search.includes("debug"),
     domElement: undefined,
     gridHelper: undefined,
     axesHelper: undefined,
@@ -157,10 +158,11 @@ const game = {
     game.gameLoopRequestId = window.requestAnimationFrame(gameLoop);
   },
 
-  toggleDebug() {
+  setDebug(enabled) {
     // game.debug.enabled = !game.debug.enabled;
     console.log("Debug mode ", game.debug.enabled ? "ON" : "OFF");
-    if (game.debug.enabled) {
+    game.debug.enabled = enabled;
+    if (enabled) {
       game.debug.axesHelper.visible = true;
       game.debug.gridHelper.visible = true;
       game.debug.labels.eids = true;
@@ -175,6 +177,10 @@ const game = {
       game.debug.labels.componentDetails = false;
       game.camera.layers.disable(1);
     }
+  },
+
+  toggleDebug() {
+    game.setDebug(!game.debug.enabled);
   },
 
   addAxesHelper(size) {
@@ -282,18 +288,8 @@ function gameLoop(currentTime = 0) {
 
       // TODO: update label content
       const playerDiv = document.createElement("div");
-      playerDiv.className = "label";
-      playerDiv.style.fontFamily = "monospace";
-
-      // const pos = getEntityComponents(game.world, eid)[0];
-      // console.log(getWorldComponents(game.world));
-      // console.log(ComponentNames[pos]);
-      // console.log(pos);
-      // console.log(Position);
-
-      playerDiv.style.backgroundColor = "transparent";
-      playerDiv.style.color = "white";
-      playerDiv.style.whiteSpace = "pre";
+      playerDiv.className =
+        "font-mono text-[9px] bg-transparent text-white whitespace-pre";
 
       const playerLabel = new CSS2DObject(playerDiv);
       playerLabel.name = "label";
@@ -301,8 +297,6 @@ function gameLoop(currentTime = 0) {
       playerLabel.center.set(0, 0);
       playerLabel.layers.set(1);
       mesh.add(playerLabel);
-      // playerLabel.layers.set(0);
-      // mesh.layers.enableAll();
 
       game.scene.add(mesh);
     }
@@ -321,35 +315,36 @@ function gameLoop(currentTime = 0) {
     }
   }
 
+  // TODO: do we even need a loop with fixed timestep?
   while (accumulator >= game.config.dt) {
     // game logic
-
-    // Update positions
-    positionQuery(game.world).forEach((eid) => {
-      game.scene
-        .getObjectByName(eid)
-        ?.position?.set(Position.x[eid], Position.y[eid], Position.z[eid]);
-    });
-
-    if (game.debug.enabled) {
-      game.debug.labels.update();
-    }
-
+    // ...
     // NOTE: Don't change these lines, needed for the game loop
     accumulator -= game.config.dt;
     game.currentTick++;
+  }
+
+  // Update positions
+  positionQuery(game.world).forEach((eid) => {
+    const obj = game.scene.getObjectByName(eid);
+
+    const newPos = new THREE.Vector3(
+      Position.x[eid],
+      Position.y[eid],
+      Position.z[eid],
+    );
+
+    obj?.position?.lerp(newPos, game.config.lerpRatio);
+  });
+
+  if (game.debug.enabled) {
+    game.debug.labels.update();
   }
 
   game.renderer.render(game.scene, game.camera);
   game.labelRenderer?.render(game.scene, game.camera);
   game.stats?.update();
   game.controls.update();
-
-  const ents = positionQuery(game.world);
-  for (let i = 0; i < ents.length; i++) {
-    const ent = ents[i];
-    Position.x[ent];
-  }
 
   if (game.playerId >= 0) {
     const inputPayload = getInputPayload();
@@ -473,7 +468,6 @@ function setupDebugView() {
     game.camera.layers.enable(1); // show label layer
   }
 
-
   game.labelRenderer = new CSS2DRenderer();
   game.labelRenderer.setSize(window.innerWidth, window.innerHeight);
   game.labelRenderer.domElement.style.position = "absolute";
@@ -499,7 +493,7 @@ function onWindowResize() {
 }
 
 function onKeyDown(event) {
-  // console.log("key down:", event.key);
+  console.log("key down:", event.key);
   game.keyboard[event.key.toLowerCase()] = true;
 
   if (game.keyboard["shift"] && game.keyboard["control"]) {
@@ -507,6 +501,11 @@ function onKeyDown(event) {
       game.toggleDebug();
     }
   }
+
+  if (game.keyboard["f12"]) {
+    game.toggleDebug();
+  }
+
   if (game.keyboard["j"]) {
     game.joinGame();
   }
@@ -563,12 +562,6 @@ function setupSocketIO() {
   });
 
   game.socket.on("update", (payload) => {
-    // console.log(payload);
-    // resetWorld(game.world);
-    // resetGlobals();
-    // deserialize(game.world, payload, DESERIALIZE_MODE.MAP);
-    // resetWorld(game.world);
-    // resetGlobals();
     deserialize(game.world, payload, DESERIALIZE_MODE.MAP_REPLACING);
     console.log(getAllEntities(game.world));
   });

@@ -35,7 +35,11 @@ export default function App() {
       const socketFolder = gui.addFolder("Socket settings");
 
       const connectionFolder = socketFolder.addFolder("Connection");
-      connectionFolder.add(game.socket, "connected").name("Connection status").listen().disable();
+      connectionFolder
+        .add(game.socket, "connected")
+        .name("Connection status")
+        .listen()
+        .disable();
       connectionFolder
         .add({ btn: () => game.connectToServer() }, "btn")
         .name("Connect");
@@ -44,26 +48,37 @@ export default function App() {
         .name("Disconnect");
 
       const eventsFolder = socketFolder.addFolder("Events");
-      eventsFolder.add({ btn: () => game.subscribeToUpdates() }, "btn").name("Subscribe to updates");
-      eventsFolder.add({ btn: () => game.unsubscribeFromUpdates() }, "btn").name("Unsubscribe from updates");
-      eventsFolder.add({ btn: () => game.joinGame() }, "btn").name("Join game");
-      eventsFolder.add({ btn: () => game.leaveGame() }, "btn").name("Leave game");
+      eventsFolder
+        .add({ btn: () => game.subscribeToUpdates() }, "btn")
+        .name("Subscribe to updates");
+      eventsFolder
+        .add({ btn: () => game.unsubscribeFromUpdates() }, "btn")
+        .name("Unsubscribe from updates");
+      eventsFolder
+        .add({ btn: () => game.joinGame() }, "btn")
+        .name("Join game [J]");
+      eventsFolder
+        .add({ btn: () => game.leaveGame() }, "btn")
+        .name("Leave game");
       socketFolder.open();
 
-      const debugFolder = gui.addFolder("Debug");
+      const debugFolder = gui.addFolder("Debug [F12] or [ctrl] [shift] [d]");
       debugFolder
         .add(game.debug, "enabled")
         .name("Debug view")
         .listen()
-        .onChange(() => game.toggleDebug());
+        .onChange((isEnabled) => game.setDebug(isEnabled));
 
-      debugFolder.add(game.debug.axesHelper, "visible").listen().name("Show axes");
-      debugFolder.add(game.debug.gridHelper, "visible").listen().name("Show grid");
-      const labelFolder = debugFolder.addFolder("Labels");
-      labelFolder
-        .add(game.debug.labels, "eids")
+      debugFolder
+        .add(game.debug.axesHelper, "visible")
         .listen()
-        .name("Entity ids");
+        .name("Show axes");
+      debugFolder
+        .add(game.debug.gridHelper, "visible")
+        .listen()
+        .name("Show grid");
+      const labelFolder = debugFolder.addFolder("Labels");
+      labelFolder.add(game.debug.labels, "eids").listen().name("Entity ids");
       labelFolder
         .add(game.debug.labels, "components")
         .listen()

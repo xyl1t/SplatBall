@@ -34,8 +34,8 @@ const inGameSockets = new Set(); // NOTE: actually in game players, but stored a
 
 const game = {
   config: {
-    tickRate: 30,
-    dt: 1 / 30,
+    tickRate: 20,
+    dt: 1 / 20,
   },
   currentTick: 0,
 };
