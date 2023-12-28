@@ -315,12 +315,13 @@ function gameLoop(currentTime = 0) {
   }
 
   // TODO: do we even need a loop with fixed timestep?
-  // while (accumulator >= game.config.dt) {
-  //   // game logic
-  //   // NOTE: Don't change these lines, needed for the game loop
-  //   accumulator -= game.config.dt;
-  //   game.currentTick++;
-  // }
+  while (accumulator >= game.config.dt) {
+    // game logic
+    // ...
+    // NOTE: Don't change these lines, needed for the game loop
+    accumulator -= game.config.dt;
+    game.currentTick++;
+  }
 
   // Update positions
   positionQuery(game.world).forEach((eid) => {
