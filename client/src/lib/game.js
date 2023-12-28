@@ -91,7 +91,7 @@ const game = {
   gameLoopRequestId: undefined,
 
   debug: {
-    enabled: (window.location.search.includes("debug")),
+    enabled: window.location.search.includes("debug"),
     domElement: undefined,
     gridHelper: undefined,
     axesHelper: undefined,
@@ -180,7 +180,7 @@ const game = {
   },
 
   toggleDebug() {
-      game.setDebug(!game.debug.enabled);
+    game.setDebug(!game.debug.enabled);
   },
 
   addAxesHelper(size) {
@@ -288,7 +288,8 @@ function gameLoop(currentTime = 0) {
 
       // TODO: update label content
       const playerDiv = document.createElement("div");
-      playerDiv.className = "font-mono text-[9px] bg-transparent text-white whitespace-pre";
+      playerDiv.className =
+        "font-mono text-[9px] bg-transparent text-white whitespace-pre";
 
       const playerLabel = new CSS2DObject(playerDiv);
       playerLabel.name = "label";
@@ -325,7 +326,6 @@ function gameLoop(currentTime = 0) {
 
   // Update positions
   positionQuery(game.world).forEach((eid) => {
-
     const obj = game.scene.getObjectByName(eid);
 
     const newPos = new THREE.Vector3(
@@ -467,7 +467,6 @@ function setupDebugView() {
 
     game.camera.layers.enable(1); // show label layer
   }
-
 
   game.labelRenderer = new CSS2DRenderer();
   game.labelRenderer.setSize(window.innerWidth, window.innerHeight);
