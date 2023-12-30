@@ -16,15 +16,21 @@ import {
   registerComponent,
   exitQuery,
   getEntityComponents,
+  hasComponent,
 } from "bitecs";
-import { componentNames, Me, Position, deserialize } from "shared";
+import { componentNames, Me, Position, deserialize, Box, Color } from "shared";
 const URL =
   process.env.NODE_ENV === "production" ? undefined : "http://localhost:8080";
 
-const meQuery = defineQuery([Me]);
-const positionQuery = defineQuery([Position]);
-const enteredPositionQuery = enterQuery(positionQuery);
-const exitedPositionQuery = exitQuery(positionQuery);
+const queryMe = defineQuery([Me]);
+
+const queryPosition = defineQuery([Position]);
+const queryPositionEnter = enterQuery(queryPosition);
+const queryPositionExit = exitQuery(queryPosition);
+
+const queryBox = defineQuery([Position, Box, Color]);
+const queryBoxEnter = enterQuery(queryBox);
+const queryBoxExit = exitQuery(queryBox);
 
 const game = {
   // NOTE: this is the default config
@@ -80,6 +86,7 @@ const game = {
   playerId: undefined,
 
   keyboard: {},
+  keyCode: {},
   mouse: {
     x: 0,
     y: 0,
@@ -100,8 +107,10 @@ const game = {
       components: false,
       componentDetails: true,
       update: function () {
-        positionQuery(game.world).forEach((eid) => {
+        queryPosition(game.world).forEach((eid) => {
           const obj = game.scene.getObjectByName(eid);
+          if (!obj) return;
+
           let textContent = "";
           if (game.debug.labels.eids)
             textContent += `eid: ${eid} ${
@@ -218,7 +227,7 @@ const game = {
       (response) => {
         deserialize(game.world, response, DESERIALIZE_MODE.MAP_REPLACING);
 
-        game.playerId = meQuery(game.world)[0];
+        game.playerId = queryMe(game.world)[0];
 
         console.log("player joined, playerId: ", game.playerId);
       },
@@ -271,16 +280,18 @@ function gameLoop(currentTime = 0) {
   oldTime = currentTime;
   accumulator += frameTime;
 
-  const entered = enteredPositionQuery(game.world);
+  const entered = queryBoxEnter(game.world);
   if (entered.length > 0) {
-    console.log("+enter query: ", entered);
+    console.log("+enter box query: ", entered);
     // add threejs cube
     for (let i = 0; i < entered.length; i++) {
       const eid = entered[i];
+
       const mesh = new THREE.Mesh(
-        new THREE.BoxGeometry(1, 1, 1),
-        new THREE.MeshStandardMaterial({ color: 0x00ff00 }),
+        new THREE.BoxGeometry(Box.width[eid], Box.height[eid], Box.depth[eid]),
+        new THREE.MeshStandardMaterial({ color: Color.value[eid] }),
       );
+      console.log(Color.value[eid].toString(16));
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       mesh.position.set(Position.x[eid], Position.y[eid], Position.z[eid]);
@@ -300,11 +311,9 @@ function gameLoop(currentTime = 0) {
 
       game.scene.add(mesh);
     }
-
-    if (game.debug.enabled) game.debug.labels.update();
   }
 
-  const exited = exitedPositionQuery(game.world);
+  const exited = queryBoxExit(game.world);
   if (exited.length > 0) {
     console.log("-exit query: ", exited);
     for (let i = 0; i < exited.length; i++) {
@@ -325,7 +334,7 @@ function gameLoop(currentTime = 0) {
   }
 
   // Update positions
-  positionQuery(game.world).forEach((eid) => {
+  queryPosition(game.world).forEach((eid) => {
     const obj = game.scene.getObjectByName(eid);
 
     const newPos = new THREE.Vector3(
@@ -430,6 +439,7 @@ function setupThree() {
   // for retina displays (macs, phones, etc.)
   game.renderer.setPixelRatio(window.devicePixelRatio);
   game.renderer.shadowMap.enabled = true;
+  game.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   game.parentDiv.appendChild(game.renderer.domElement);
 
   game.clock = new THREE.Clock();
@@ -451,6 +461,14 @@ function setupThree() {
   game.directionalLight.position.set(
     ...Object.values(game.config.directionalLight.position),
   );
+  game.directionalLight.shadow.camera.near = 0.1;
+  game.directionalLight.shadow.camera.far = 500;
+  game.directionalLight.shadow.camera.left = -50;
+  game.directionalLight.shadow.camera.right = 50;
+  game.directionalLight.shadow.camera.top = 50;
+  game.directionalLight.shadow.camera.bottom = -50;
+  game.directionalLight.shadow.mapSize.width = 2048;
+  game.directionalLight.shadow.mapSize.height = 2048;
   game.scene.add(game.directionalLight);
 
   game.controls = new OrbitControls(game.camera, game.parentDiv);
@@ -493,27 +511,36 @@ function onWindowResize() {
 }
 
 function onKeyDown(event) {
-  console.log("key down:", event.key);
-  game.keyboard[event.key.toLowerCase()] = true;
-
-  if (game.keyboard["shift"] && game.keyboard["control"]) {
-    if (game.keyboard.d) {
-      game.toggleDebug();
-    }
-  }
+  const key = event.key.toLowerCase();
+  // console.log("key down:", event);
+  game.keyboard[key] = true;
+  game.keyCode[event.code] = true;
 
   if (game.keyboard["f12"]) {
     game.toggleDebug();
   }
 
-  if (game.keyboard["j"]) {
-    game.joinGame();
+  // Debug keys
+
+  // NOTE: it's necessary to use the "code" from the event instead of the "key"
+  // because clicking alt+key will register a different character
+  if (game.keyCode["AltLeft"] && game.keyCode["ControlLeft"]) {
+    if (game.keyCode.KeyD) {
+      game.toggleDebug();
+    }
+    if (game.keyCode.KeyJ) {
+      game.joinGame();
+    }
+    if (game.keyCode.KeyL) {
+      game.leaveGame();
+    }
   }
 }
 
 function onKeyUp(event) {
   // console.log("key up:", event.key);
   game.keyboard[event.key.toLowerCase()] = false;
+  game.keyCode[event.code] = false;
 }
 
 function onMouseMove(event) {
@@ -563,7 +590,11 @@ function setupSocketIO() {
 
   game.socket.on("update", (payload) => {
     deserialize(game.world, payload, DESERIALIZE_MODE.MAP_REPLACING);
-    console.log(getAllEntities(game.world));
+    console.log("world update", getAllEntities(game.world));
+  });
+
+  game.socket.on("physics", (payload) => {
+    console.log("physics update: ", payload);
   });
 }
 

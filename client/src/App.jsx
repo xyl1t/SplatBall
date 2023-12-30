@@ -18,10 +18,13 @@ export default function App() {
       },
       directionalLight: {
         position: {
-          x: 300,
-          y: 200,
+          x: 200,
+          y: 400,
           z: 100,
         },
+      },
+      ambientLight: {
+        intensity: 1,
       },
       antialias: false,
     });
@@ -56,13 +59,13 @@ export default function App() {
         .name("Unsubscribe from updates");
       eventsFolder
         .add({ btn: () => game.joinGame() }, "btn")
-        .name("Join game [J]");
+        .name("Join game [ctrl] [alt] [j]");
       eventsFolder
         .add({ btn: () => game.leaveGame() }, "btn")
-        .name("Leave game");
+        .name("Leave game [ctrl] [alt] [l]");
       socketFolder.open();
 
-      const debugFolder = gui.addFolder("Debug [F12] or [ctrl] [shift] [d]");
+      const debugFolder = gui.addFolder("Debug [F12] or [ctrl] [alt] [d]");
       debugFolder
         .add(game.debug, "enabled")
         .name("Debug view")

@@ -13,7 +13,7 @@ import {
   removeComponent,
 } from "bitecs";
 import logger, { colors, green, red } from "./utils/logger.js";
-import { Me, Position, serialize } from "shared";
+import { Box, Color, Me, Position, serialize } from "shared";
 
 const io = new Server(server, {
   cors: {
@@ -42,6 +42,21 @@ const game = {
 
 const world = createWorld();
 const _NULL_ENTITY = addEntity(world);
+
+const floor = addEntity(world);
+
+addComponent(world, Position, floor);
+Position.x[floor] = 0;
+Position.y[floor] = -0.05;
+Position.z[floor] = 0;
+
+addComponent(world, Color, floor);
+Color.value[floor] = 0xa89971;
+
+addComponent(world, Box, floor);
+Box.width[floor] = 15;
+Box.height[floor] = 0.1;
+Box.depth[floor] = 15;
 
 io.on("connection", (socket) => {
   logger.event(green("connection"), "socket id:", socket.id);
@@ -85,6 +100,14 @@ io.on("connection", (socket) => {
       Position.x[playerId] = (Math.random() * 2 - 1) * 7;
       Position.y[playerId] = Math.random() * 4;
       Position.z[playerId] = (Math.random() * 2 - 1) * 7;
+
+      addComponent(world, Box, playerId);
+      Box.width[playerId] = 1;
+      Box.height[playerId] = 1;
+      Box.depth[playerId] = 1;
+
+      addComponent(world, Color, playerId);
+      Color.value[playerId] = Math.random() * 0xffffff;
 
       // NOTE: It is necessary to specify that this entity is the player ("Me")
       // because the entity ids on the client are not the same as on the server
@@ -137,25 +160,38 @@ setInterval(() => {
     // for (const socket of connectedSockets) {
     // for (const socket of Object.values(playerSockets)) {
     for (const socket of inGameSockets) {
-      const speed = 3;
-      if (socket?.input?.x) {
-        Position.x[socket.eid] += speed * game.config.dt * socket.input.x;
-      }
-      if (socket?.input?.z) {
-        Position.z[socket.eid] += speed * game.config.dt * socket.input.z;
-      }
+      const speed = 5;
+      const direction = {
+        x: socket.input.x,
+        y: socket?.input?.space ? 1 : socket?.input?.shift ? -1 : 0,
+        z: socket.input.z,
+      };
 
-      if (socket?.input?.space) {
-        Position.y[socket.eid] += speed * game.config.dt;
-      }
-      if (socket?.input?.shift) {
-        Position.y[socket.eid] -= speed * game.config.dt;
-      }
+      // normalize position
+      const length = Math.sqrt(
+        direction.x ** 2 + direction.y ** 2 + direction.z ** 2,
+      );
+      direction.x /= length == 0 ? 1 : length;
+      direction.y /= length == 0 ? 1 : length;
+      direction.z /= length == 0 ? 1 : length;
+
+      const vel = {
+        x: speed * direction.x,
+        y: speed * direction.y,
+        z: speed * direction.z,
+      };
+
+      Position.x[socket.eid] += vel.x * game.config.dt;
+      Position.y[socket.eid] += vel.y * game.config.dt;
+      Position.z[socket.eid] += vel.z * game.config.dt;
 
       socket.input.x = 0;
+      socket.input.y = 0;
       socket.input.z = 0;
       socket.input.space = false;
       socket.input.shift = false;
+      socket.input.left = false;
+      socket.input.right = false;
     }
 
     for (const socket of subscribedSockets) {
