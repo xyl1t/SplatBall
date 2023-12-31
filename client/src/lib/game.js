@@ -548,7 +548,7 @@ function setupThree() {
   const textureLoader = new THREE.TextureLoader();
   const backgroundTexture = textureLoader.load("skybox.jpg");
   backgroundTexture.mapping = THREE.EquirectangularReflectionMapping;
-  backgroundTexture.encoding = THREE.sRGBEncoding;
+  backgroundTexture.colorSpace = THREE.SRGBColorSpace;
   game.scene.background = backgroundTexture;
 }
 
