@@ -543,6 +543,13 @@ function setupThree() {
   game.scene.add(game.directionalLight);
 
   game.controls = new OrbitControls(game.camera, game.parentDiv);
+
+  // add skybox
+  const textureLoader = new THREE.TextureLoader();
+  const backgroundTexture = textureLoader.load("skybox.jpg");
+  backgroundTexture.mapping = THREE.EquirectangularReflectionMapping;
+  backgroundTexture.encoding = THREE.sRGBEncoding;
+  game.scene.background = backgroundTexture;
 }
 
 function setupDebugView() {
