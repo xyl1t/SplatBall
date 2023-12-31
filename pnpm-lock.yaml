@@ -12,7 +12,7 @@ importers:
     dependencies:
       bitecs:
         specifier: github:xyl1t/bitECS#map-replacing-deserialization-mode
-        version: github.com/xyl1t/bitECS/d93e57612a56c52d8434e47fed3dbf4e558caabb
+        version: github.com/xyl1t/bitECS/a992a293dc2b60363015ecc382bc514558c69eff
       react:
         specifier: ^18.2.0
         version: 18.2.0
@@ -70,7 +70,7 @@ importers:
     dependencies:
       bitecs:
         specifier: github:xyl1t/bitECS#map-replacing-deserialization-mode
-        version: github.com/xyl1t/bitECS/d93e57612a56c52d8434e47fed3dbf4e558caabb
+        version: github.com/xyl1t/bitECS/a992a293dc2b60363015ecc382bc514558c69eff
       cannon-es:
         specifier: ^0.20.0
         version: 0.20.0
@@ -98,7 +98,7 @@ importers:
     dependencies:
       bitecs:
         specifier: github:xyl1t/bitECS#map-replacing-deserialization-mode
-        version: github.com/xyl1t/bitECS/d93e57612a56c52d8434e47fed3dbf4e558caabb
+        version: github.com/xyl1t/bitECS/a992a293dc2b60363015ecc382bc514558c69eff
 
 packages:
 
@@ -148,7 +148,7 @@ packages:
       '@babel/traverse': 7.23.6
       '@babel/types': 7.23.6
       convert-source-map: 2.0.0
-      debug: 4.3.4
+      debug: 4.3.4(supports-color@5.5.0)
       gensync: 1.0.0-beta.2
       json5: 2.2.3
       semver: 6.3.1
@@ -321,7 +321,7 @@ packages:
       '@babel/helper-split-export-declaration': 7.22.6
       '@babel/parser': 7.23.6
       '@babel/types': 7.23.6
-      debug: 4.3.4
+      debug: 4.3.4(supports-color@5.5.0)
       globals: 11.12.0
     transitivePeerDependencies:
       - supports-color
@@ -1266,17 +1266,6 @@ packages:
       ms: 2.0.0
     dev: false
 
-  /debug@4.3.4:
-    resolution: {integrity: sha512-PRWFHuSU3eDtQJPvnNY7Jcket1j0t5OuOsFzPPzsekD52Zl8qUfFIPEiswXqIvHWGVHOgX+7G/vCNNhehwxfkQ==}
-    engines: {node: '>=6.0'}
-    peerDependencies:
-      supports-color: '*'
-    peerDependenciesMeta:
-      supports-color:
-        optional: true
-    dependencies:
-      ms: 2.1.2
-
   /debug@4.3.4(supports-color@5.5.0):
     resolution: {integrity: sha512-PRWFHuSU3eDtQJPvnNY7Jcket1j0t5OuOsFzPPzsekD52Zl8qUfFIPEiswXqIvHWGVHOgX+7G/vCNNhehwxfkQ==}
     engines: {node: '>=6.0'}
@@ -1371,7 +1360,7 @@ packages:
     resolution: {integrity: sha512-9Z0qLB0NIisTRt1DZ/8U2k12RJn8yls/nXMZLn+/N8hANT3TcYjKFKcwbw5zFQiN4NTde3TSY9zb79e1ij6j9Q==}
     dependencies:
       '@socket.io/component-emitter': 3.1.0
-      debug: 4.3.4
+      debug: 4.3.4(supports-color@5.5.0)
       engine.io-parser: 5.2.1
       ws: 8.11.0
       xmlhttprequest-ssl: 2.0.0
@@ -3047,7 +3036,7 @@ packages:
     engines: {node: '>=10.0.0'}
     dependencies:
       '@socket.io/component-emitter': 3.1.0
-      debug: 4.3.4
+      debug: 4.3.4(supports-color@5.5.0)
       engine.io-client: 6.5.3
       socket.io-parser: 4.2.4
     transitivePeerDependencies:
@@ -3541,8 +3530,8 @@ packages:
     engines: {node: '>=10'}
     dev: true
 
-  github.com/xyl1t/bitECS/d93e57612a56c52d8434e47fed3dbf4e558caabb:
-    resolution: {tarball: https://codeload.github.com/xyl1t/bitECS/tar.gz/d93e57612a56c52d8434e47fed3dbf4e558caabb}
+  github.com/xyl1t/bitECS/a992a293dc2b60363015ecc382bc514558c69eff:
+    resolution: {tarball: https://codeload.github.com/xyl1t/bitECS/tar.gz/a992a293dc2b60363015ecc382bc514558c69eff}
     name: bitecs
     version: 0.3.40
     dev: false

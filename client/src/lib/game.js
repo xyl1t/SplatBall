@@ -18,19 +18,30 @@ import {
   getEntityComponents,
   hasComponent,
 } from "bitecs";
-import { componentNames, Me, Position, deserialize, Box, Color } from "shared";
+import {
+  componentNames,
+  Me,
+  Position,
+  deserialize,
+  Box,
+  Color,
+  DisplayCollider,
+  Quaternion,
+} from "shared";
 const URL =
   process.env.NODE_ENV === "production" ? undefined : "http://localhost:8080";
 
 const queryMe = defineQuery([Me]);
 
 const queryPosition = defineQuery([Position]);
-const queryPositionEnter = enterQuery(queryPosition);
-const queryPositionExit = exitQuery(queryPosition);
 
 const queryBox = defineQuery([Position, Box, Color]);
 const queryBoxEnter = enterQuery(queryBox);
 const queryBoxExit = exitQuery(queryBox);
+
+const queryDisplayCollider = defineQuery([DisplayCollider]);
+const queryColliderEnter = enterQuery(queryDisplayCollider);
+const queryColliderExit = exitQuery(queryDisplayCollider);
 
 const game = {
   // NOTE: this is the default config
@@ -61,7 +72,7 @@ const game = {
     },
     tickrate: 20,
     dt: 1 / 20,
-    lerpRatio: 0.125,
+    lerpRatio: 0.5,
   },
 
   isSetup: false,
@@ -98,10 +109,12 @@ const game = {
   gameLoopRequestId: undefined,
 
   debug: {
+    propertyListeners: [],
     enabled: window.location.search.includes("debug"),
     domElement: undefined,
     gridHelper: undefined,
     axesHelper: undefined,
+    colliderWireframes: false,
     labels: {
       eids: true,
       components: false,
@@ -158,6 +171,7 @@ const game = {
     setupEventListeners();
     setupSocketIO();
     setupECSWorld();
+    setupDebugListeners();
 
     game.isSetup = true;
   },
@@ -167,11 +181,11 @@ const game = {
     game.gameLoopRequestId = window.requestAnimationFrame(gameLoop);
   },
 
-  setDebug(enabled) {
+  setDebug(isEnabled) {
     // game.debug.enabled = !game.debug.enabled;
     console.log("Debug mode ", game.debug.enabled ? "ON" : "OFF");
-    game.debug.enabled = enabled;
-    if (enabled) {
+    game.debug.enabled = isEnabled;
+    if (isEnabled) {
       game.debug.axesHelper.visible = true;
       game.debug.gridHelper.visible = true;
       game.debug.labels.eids = true;
@@ -186,10 +200,6 @@ const game = {
       game.debug.labels.componentDetails = false;
       game.camera.layers.disable(1);
     }
-  },
-
-  toggleDebug() {
-    game.setDebug(!game.debug.enabled);
   },
 
   addAxesHelper(size) {
@@ -223,9 +233,9 @@ const game = {
   joinGame() {
     game.socket.emit(
       "join",
-      { payload: "initialization of player" },
+      { debug: { colliderWireframes: game.debug.colliderWireframes } },
       (response) => {
-        deserialize(game.world, response, DESERIALIZE_MODE.MAP_REPLACING);
+        deserialize(game.world, response, DESERIALIZE_MODE.SYNCHRONIZE);
 
         game.playerId = queryMe(game.world)[0];
 
@@ -291,7 +301,6 @@ function gameLoop(currentTime = 0) {
         new THREE.BoxGeometry(Box.width[eid], Box.height[eid], Box.depth[eid]),
         new THREE.MeshStandardMaterial({ color: Color.value[eid] }),
       );
-      console.log(Color.value[eid].toString(16));
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       mesh.position.set(Position.x[eid], Position.y[eid], Position.z[eid]);
@@ -324,6 +333,58 @@ function gameLoop(currentTime = 0) {
     }
   }
 
+  const enteredCollider = queryColliderEnter(game.world);
+  if (enteredCollider.length > 0) {
+    console.log("enteredCollider: ", enteredCollider);
+    for (let i = 0; i < enteredCollider.length; i++) {
+      const eid = enteredCollider[i];
+
+      if (hasComponent(game.world, Box, eid)) {
+        const mesh = new THREE.Mesh(
+          new THREE.BoxGeometry(
+            Box.width[eid],
+            Box.height[eid],
+            Box.depth[eid],
+          ),
+          new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true }),
+        );
+        mesh.scale.multiplyScalar(1.01);
+
+        mesh.position.set(Position.x[eid], Position.y[eid], Position.z[eid]);
+
+        mesh.quaternion.set(
+          Quaternion.x[eid],
+          Quaternion.y[eid],
+          Quaternion.z[eid],
+          Quaternion.w[eid],
+        );
+
+        mesh.name = eid + "collider";
+        game.scene.add(mesh);
+      }
+    }
+  }
+
+  const exitedCollider = queryColliderExit(game.world);
+  if (exitedCollider.length > 0) {
+    console.log("exitedCollider: ", exitedCollider);
+    exitedCollider.forEach((eid) => {
+      const mesh = game.scene.getObjectByName(eid + "collider");
+      game.scene.remove(mesh);
+    });
+  }
+
+  queryDisplayCollider(game.world).forEach((eid) => {
+    const obj = game.scene.getObjectByName(eid + "collider");
+    obj.quaternion.set(
+      Quaternion.x[eid],
+      Quaternion.y[eid],
+      Quaternion.z[eid],
+      Quaternion.w[eid],
+    );
+    obj.position.set(Position.x[eid], Position.y[eid], Position.z[eid]);
+  });
+
   // TODO: do we even need a loop with fixed timestep?
   while (accumulator >= game.config.dt) {
     // game logic
@@ -343,12 +404,22 @@ function gameLoop(currentTime = 0) {
       Position.z[eid],
     );
 
+    const newRot = new THREE.Quaternion(
+      Quaternion.x[eid],
+      Quaternion.y[eid],
+      Quaternion.z[eid],
+      Quaternion.w[eid],
+    );
+
     obj?.position?.lerp(newPos, game.config.lerpRatio);
+    obj?.quaternion?.slerp(newRot, game.config.lerpRatio);
   });
 
   if (game.debug.enabled) {
     game.debug.labels.update();
   }
+
+  handlePropertyListeners();
 
   game.renderer.render(game.scene, game.camera);
   game.labelRenderer?.render(game.scene, game.camera);
@@ -378,22 +449,22 @@ function getInputPayload() {
 
   let hasInput = false;
 
-  if (game.keyboard.w) {
+  if (game.keyboard.w || game.keyboard.arrowup) {
     inputPayload.x = 1;
     hasInput = true;
   }
 
-  if (game.keyboard.s) {
+  if (game.keyboard.s || game.keyboard.arrowdown) {
     inputPayload.x = -1;
     hasInput = true;
   }
 
-  if (game.keyboard.a) {
+  if (game.keyboard.a || game.keyboard.arrowleft) {
     inputPayload.z = -1;
     hasInput = true;
   }
 
-  if (game.keyboard.d) {
+  if (game.keyboard.d || game.keyboard.arrowright) {
     inputPayload.z = 1;
     hasInput = true;
   }
@@ -517,7 +588,7 @@ function onKeyDown(event) {
   game.keyCode[event.code] = true;
 
   if (game.keyboard["f12"]) {
-    game.toggleDebug();
+    game.debug.enabled = !game.debug.enabled;
   }
 
   // Debug keys
@@ -526,7 +597,7 @@ function onKeyDown(event) {
   // because clicking alt+key will register a different character
   if (game.keyCode["AltLeft"] && game.keyCode["ControlLeft"]) {
     if (game.keyCode.KeyD) {
-      game.toggleDebug();
+      game.debug.enabled = !game.debug.enabled;
     }
     if (game.keyCode.KeyJ) {
       game.joinGame();
@@ -589,12 +660,8 @@ function setupSocketIO() {
   });
 
   game.socket.on("update", (payload) => {
-    deserialize(game.world, payload, DESERIALIZE_MODE.MAP_REPLACING);
+    deserialize(game.world, payload, DESERIALIZE_MODE.SYNCHRONIZE);
     console.log("world update", getAllEntities(game.world));
-  });
-
-  game.socket.on("physics", (payload) => {
-    console.log("physics update: ", payload);
   });
 }
 
@@ -602,6 +669,38 @@ function setupECSWorld() {
   game.world = createWorld();
 
   registerComponent(game.world, Position);
+}
+
+function setupDebugListeners() {
+  if (game.debug.enabled) {
+    onChange(game.debug, "enabled", (current) => {
+      game.setDebug(current);
+    });
+    onChange(game.debug, "colliderWireframes", (current) => {
+      console.log("colliderWireframes: ", current);
+      game.socket.emit("debug", {
+        colliderWireframes: current,
+      });
+    });
+  }
+}
+
+function onChange(obj, property, callback) {
+  game.debug.propertyListeners.push({
+    prev: undefined,
+    obj,
+    property,
+    callback,
+  });
+}
+
+function handlePropertyListeners() {
+  game.debug.propertyListeners.forEach((listener) => {
+    if (listener.prev !== listener.obj[listener.property]) {
+      listener.prev = listener.obj[listener.property];
+      listener.callback(listener.obj[listener.property], listener.prev);
+    }
+  });
 }
 
 export default game;

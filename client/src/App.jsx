@@ -31,10 +31,8 @@ export default function App() {
 
     game.startGameLoop();
 
-    let gui;
+    let gui = new GUI();
     if (game.debug.enabled) {
-      gui = new GUI();
-
       const socketFolder = gui.addFolder("Socket settings");
 
       const connectionFolder = socketFolder.addFolder("Connection");
@@ -66,11 +64,7 @@ export default function App() {
       socketFolder.open();
 
       const debugFolder = gui.addFolder("Debug [F12] or [ctrl] [alt] [d]");
-      debugFolder
-        .add(game.debug, "enabled")
-        .name("Debug view")
-        .listen()
-        .onChange((isEnabled) => game.setDebug(isEnabled));
+      debugFolder.add(game.debug, "enabled").name("Debug view").listen();
 
       debugFolder
         .add(game.debug.axesHelper, "visible")
@@ -80,6 +74,15 @@ export default function App() {
         .add(game.debug.gridHelper, "visible")
         .listen()
         .name("Show grid");
+      debugFolder
+        .add(game.debug, "colliderWireframes")
+        .listen()
+        .name("Collider wireframes");
+      debugFolder
+        .add(game.config, "lerpRatio", 0, 1)
+        .listen()
+        .name("Lerp ratio");
+
       const labelFolder = debugFolder.addFolder("Labels");
       labelFolder.add(game.debug.labels, "eids").listen().name("Entity ids");
       labelFolder
@@ -92,6 +95,14 @@ export default function App() {
         .name("Details");
       labelFolder.open();
       debugFolder.open();
+    } else {
+      game.subscribeToUpdates();
+      gui
+        .add({ btn: () => game.joinGame() }, "btn")
+        .name("Join game [ctrl] [alt] [j]");
+      gui
+        .add({ btn: () => game.leaveGame() }, "btn")
+        .name("Leave game [ctrl] [alt] [l]");
     }
 
     return () => {

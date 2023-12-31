@@ -13,14 +13,24 @@ export const Position = defineComponent({
   z: Types.f32,
 });
 
+export const Quaternion = defineComponent({
+  x: Types.f32,
+  y: Types.f32,
+  z: Types.f32,
+  w: Types.f32,
+});
+
 export const Color = defineComponent({
   value: Types.i32,
 });
+
+export const Static = defineComponent();
 
 export const Box = defineComponent({
   width: Types.f32,
   height: Types.f32,
   depth: Types.f32,
+  mass: Types.f32,
 });
 
 export const Sphere = defineComponent({
@@ -31,15 +41,15 @@ export const Mesh = defineComponent({
   assetPath: Types.ui16,
 });
 
-// export const Material = defineComponent({
-//   color: Types.ui32,
-// });
+export const DisplayCollider = defineComponent();
 
 export const componentNames = new Map();
 componentNames.set(Me, varToString({ Me }));
 componentNames.set(Position, varToString({ Position }));
+componentNames.set(Quaternion, varToString({ Quaternion }));
 componentNames.set(Box, varToString({ Box }));
 componentNames.set(Color, varToString({ Color }));
+componentNames.set(DisplayCollider, varToString({ DisplayCollider }));
 
 const serializationConfig = Array.from(componentNames.keys());
 

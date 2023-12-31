@@ -11,9 +11,23 @@ import {
   createWorld,
   removeEntity,
   removeComponent,
+  defineQuery,
+  enterQuery,
+  exitQuery,
+  hasComponent,
 } from "bitecs";
 import logger, { colors, green, red } from "./utils/logger.js";
-import { Box, Color, Me, Position, serialize } from "shared";
+import {
+  Box,
+  Color,
+  DisplayCollider,
+  Me,
+  Position,
+  Quaternion,
+  Static,
+  serialize,
+} from "shared";
+import * as CANNON from "cannon-es";
 
 const io = new Server(server, {
   cors: {
@@ -31,6 +45,7 @@ logger.addType("server", colors.fgWhite);
 const connectedSockets = [];
 const subscribedSockets = new Set();
 const inGameSockets = new Set(); // NOTE: actually in game players, but stored as sockets (sockets also have an entity id property)
+const inGameEntities = new Set();
 
 const game = {
   config: {
@@ -40,8 +55,21 @@ const game = {
   currentTick: 0,
 };
 
+const physicsWorld = new CANNON.World({
+  gravity: new CANNON.Vec3(0, -9.82, 0),
+});
+
+// Stores the physics body for each entity that has a Box component
+const entityPhysicsBodyMap = new Map();
+
 const world = createWorld();
 const _NULL_ENTITY = addEntity(world);
+
+const queryBox = defineQuery([Position, Box, Color]);
+const queryBoxEnter = enterQuery(queryBox);
+const queryBoxExit = exitQuery(queryBox);
+
+const queryDisplayCollider = defineQuery([DisplayCollider]);
 
 const floor = addEntity(world);
 
@@ -50,13 +78,50 @@ Position.x[floor] = 0;
 Position.y[floor] = -0.05;
 Position.z[floor] = 0;
 
-addComponent(world, Color, floor);
-Color.value[floor] = 0xa89971;
+addComponent(world, Quaternion, floor);
+Quaternion.x[floor] = 0;
+Quaternion.y[floor] = 0;
+Quaternion.z[floor] = 0;
+Quaternion.w[floor] = 1;
+
+addComponent(world, Static, floor);
 
 addComponent(world, Box, floor);
 Box.width[floor] = 15;
-Box.height[floor] = 0.1;
+Box.height[floor] = 1;
 Box.depth[floor] = 15;
+
+addComponent(world, Color, floor);
+Color.value[floor] = 0xa89971;
+
+// NOTE: Creates a simple wall of boxes for testing
+let width = 5;
+for (let row = 0; width >= 0; row++) {
+  for (let col = 0; col < width; col++) {
+    const firstBox = addEntity(world);
+
+    addComponent(world, Position, firstBox);
+    Position.x[firstBox] = 0;
+    Position.y[firstBox] = row + 1;
+    Position.z[firstBox] = col + col * 0.1 - width / 2;
+
+    addComponent(world, Quaternion, firstBox);
+    Quaternion.x[firstBox] = 0;
+    Quaternion.y[firstBox] = 0;
+    Quaternion.z[firstBox] = 0;
+    Quaternion.w[firstBox] = 1;
+
+    addComponent(world, Box, firstBox);
+    Box.width[firstBox] = 1;
+    Box.height[firstBox] = 1;
+    Box.depth[firstBox] = 1;
+    Box.mass[firstBox] = 5;
+
+    addComponent(world, Color, firstBox);
+    Color.value[firstBox] = 0x00ff00;
+  }
+  width -= 1;
+}
 
 io.on("connection", (socket) => {
   logger.event(green("connection"), "socket id:", socket.id);
@@ -78,17 +143,16 @@ io.on("connection", (socket) => {
   socket.on("join", (payload, callback) => {
     logger.event("join", "client message:", payload);
     if (socket.eid) {
-      // removeEntity(world, socket.eid);
-      // delete playerSockets[socket.eid];
       logger.warn(
         `This player has already been initialized, not re-initializing! (eid: ${socket.eid}, socket id: ${socket.id})`,
       );
     } else {
       const playerId = addEntity(world);
       socket.eid = playerId;
+      socket.debug = payload.debug;
       inGameSockets.add(socket);
+      inGameEntities.add(playerId);
       subscribedSockets.add(socket);
-      // playerSockets[playerId] = socket;
       socket.input = {
         x: 0,
         z: 0,
@@ -98,23 +162,34 @@ io.on("connection", (socket) => {
 
       addComponent(world, Position, playerId);
       Position.x[playerId] = (Math.random() * 2 - 1) * 7;
-      Position.y[playerId] = Math.random() * 4;
+      Position.y[playerId] = 3 + Math.random() * 4;
       Position.z[playerId] = (Math.random() * 2 - 1) * 7;
+
+      addComponent(world, Quaternion, playerId);
+      Quaternion.x[playerId] = 0;
+      Quaternion.y[playerId] = 0;
+      Quaternion.z[playerId] = 0;
+      Quaternion.w[playerId] = 1;
 
       addComponent(world, Box, playerId);
       Box.width[playerId] = 1;
       Box.height[playerId] = 1;
       Box.depth[playerId] = 1;
+      Box.mass[playerId] = 30;
 
       addComponent(world, Color, playerId);
       Color.value[playerId] = Math.random() * 0xffffff;
+
+      if (socket.debug.colliderWireframes) {
+        addComponent(world, DisplayCollider, playerId);
+      }
 
       // NOTE: It is necessary to specify that this entity is the player ("Me")
       // because the entity ids on the client are not the same as on the server
       addComponent(world, Me, playerId);
 
-      const payload = serialize(world);
-      callback(payload);
+      const callBackPayload = serialize(world);
+      callback(callBackPayload);
 
       removeComponent(world, Me, playerId);
     }
@@ -123,6 +198,8 @@ io.on("connection", (socket) => {
   socket.on("leave", (payload) => {
     logger.event("leave", "client message:", payload);
     removeEntity(world, socket.eid);
+    inGameEntities.delete(socket.eid);
+    inGameSockets.delete(socket);
     socket.eid = null;
   });
 
@@ -134,13 +211,23 @@ io.on("connection", (socket) => {
 
   socket.on("debug", (payload) => {
     logger.event("debug", "client message:", payload);
+    socket.debug = payload;
+    if (socket.debug.colliderWireframes) {
+      queryBox(world).forEach((eid) => {
+        addComponent(world, DisplayCollider, eid);
+      });
+    } else {
+      queryDisplayCollider(world).forEach((eid) => {
+        removeComponent(world, DisplayCollider, eid);
+      });
+    }
   });
 
   socket.on("disconnect", (reason) => {
     logger.event(red("disconnect"), "socket id:", socket.id, "Reason:", reason);
     removeEntity(world, socket.eid);
     inGameSockets.delete(socket);
-    // delete playerSockets[socket.eid];
+    inGameEntities.delete(socket.eid);
     connectedSockets.splice(connectedSockets.indexOf(socket), 1);
   });
 });
@@ -155,19 +242,78 @@ setInterval(() => {
   const diff = currentTime - oldTime;
   accumulator += diff;
 
-  // logger.debug("accumulator", accumulator, "dt", game.config.dt);
+  // Update physics world
+  physicsWorld.fixedStep(game.config.dt);
+
   while (accumulator >= game.config.dt) {
-    // for (const socket of connectedSockets) {
-    // for (const socket of Object.values(playerSockets)) {
+    // Add new entities to physics world
+    queryBoxEnter(world).forEach((eid) => {
+      const body = new CANNON.Body({
+        shape: new CANNON.Box(
+          new CANNON.Vec3(
+            Box.width[eid] / 2,
+            Box.height[eid] / 2,
+            Box.depth[eid] / 2,
+          ),
+        ),
+        mass: Box.mass[eid],
+        position: new CANNON.Vec3(
+          Position.x[eid],
+          Position.y[eid],
+          Position.z[eid],
+        ),
+        quaternion: new CANNON.Quaternion(
+          Quaternion.x[eid],
+          Quaternion.y[eid],
+          Quaternion.z[eid],
+          Quaternion.w[eid],
+        ),
+      });
+
+      if (hasComponent(world, Static, eid)) {
+        body.type = CANNON.Body.STATIC;
+      }
+
+      body.sleep();
+
+      physicsWorld.addBody(body);
+
+      entityPhysicsBodyMap.set(eid, body);
+    });
+
+    // Remove entities from physics world
+    queryBoxExit(world).forEach((eid) => {
+      const body = entityPhysicsBodyMap.get(eid);
+      if (body) {
+        physicsWorld.removeBody(body);
+        entityPhysicsBodyMap.delete(eid);
+      }
+    });
+
+    // Get positions and rotations from physics world and update components in the ecs world
+    queryBox(world).forEach((eid) => {
+      const body = entityPhysicsBodyMap.get(eid);
+      if (body) {
+        Position.x[eid] = body.position.x;
+        Position.y[eid] = body.position.y;
+        Position.z[eid] = body.position.z;
+
+        Quaternion.x[eid] = body.quaternion.x;
+        Quaternion.y[eid] = body.quaternion.y;
+        Quaternion.z[eid] = body.quaternion.z;
+        Quaternion.w[eid] = body.quaternion.w;
+      }
+    });
+
     for (const socket of inGameSockets) {
-      const speed = 5;
+      // Create direction vector from input
       const direction = {
         x: socket.input.x,
         y: socket?.input?.space ? 1 : socket?.input?.shift ? -1 : 0,
         z: socket.input.z,
       };
 
-      // normalize position
+      // normalize position (to handle diagonal movement, otherwise diagnoal movement would be faster than straight movement)
       const length = Math.sqrt(
         direction.x ** 2 + direction.y ** 2 + direction.z ** 2,
       );
@@ -175,16 +321,17 @@ setInterval(() => {
       direction.y /= length == 0 ? 1 : length;
       direction.z /= length == 0 ? 1 : length;
 
-      const vel = {
-        x: speed * direction.x,
-        y: speed * direction.y,
-        z: speed * direction.z,
+      const force = 700;
+      const forceVec = {
+        x: force * direction.x,
+        y: force * direction.y,
+        z: force * direction.z,
       };
 
-      Position.x[socket.eid] += vel.x * game.config.dt;
-      Position.y[socket.eid] += vel.y * game.config.dt;
-      Position.z[socket.eid] += vel.z * game.config.dt;
+      const body = entityPhysicsBodyMap.get(socket.eid);
+      body.applyForce(new CANNON.Vec3(forceVec.x, forceVec.y, forceVec.z));
 
+      // Reset input
       socket.input.x = 0;
       socket.input.y = 0;
       socket.input.z = 0;
@@ -199,9 +346,10 @@ setInterval(() => {
       socket.emit("update", payload);
     }
 
-    if (currentTime % 1 < 0.01) {
-      // Debug output
-    }
+    // Optional debug output once per second
+    // if (currentTime % 1 < 0.01) {
+    //   logger.info("currentTick:", game.currentTick);
+    // }
 
     accumulator -= game.config.dt;
     game.currentTick++;
