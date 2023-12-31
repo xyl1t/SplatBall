@@ -41,6 +41,10 @@ export const Mesh = defineComponent({
   assetPath: Types.ui16,
 });
 
+export const PhysicsBody = defineComponent({
+  mass: Types.f32,
+});
+
 export const DisplayCollider = defineComponent();
 
 export const componentNames = new Map();
@@ -48,6 +52,8 @@ componentNames.set(Me, varToString({ Me }));
 componentNames.set(Position, varToString({ Position }));
 componentNames.set(Quaternion, varToString({ Quaternion }));
 componentNames.set(Box, varToString({ Box }));
+componentNames.set(Sphere, varToString({ Box }));
+componentNames.set(PhysicsBody, varToString({ Box }));
 componentNames.set(Color, varToString({ Color }));
 componentNames.set(DisplayCollider, varToString({ DisplayCollider }));
 

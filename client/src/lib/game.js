@@ -27,6 +27,8 @@ import {
   Color,
   DisplayCollider,
   Quaternion,
+  PhysicsBody,
+  Sphere,
 } from "shared";
 const URL =
   process.env.NODE_ENV === "production" ? undefined : "http://localhost:8080";
@@ -35,9 +37,9 @@ const queryMe = defineQuery([Me]);
 
 const queryPosition = defineQuery([Position]);
 
-const queryBox = defineQuery([Position, Box, Color]);
-const queryBoxEnter = enterQuery(queryBox);
-const queryBoxExit = exitQuery(queryBox);
+const queryPhysicsBody = defineQuery([PhysicsBody]);
+const queryPhysicsBodyEnter = enterQuery(queryPhysicsBody);
+const queryPhysicsBodyExit = exitQuery(queryPhysicsBody);
 
 const queryDisplayCollider = defineQuery([DisplayCollider]);
 const queryColliderEnter = enterQuery(queryDisplayCollider);
@@ -76,6 +78,7 @@ const game = {
   },
 
   isSetup: false,
+  isSubscribed: false,
 
   currentTick: 0,
 
@@ -224,13 +227,16 @@ const game = {
 
   subscribeToUpdates() {
     game.socket.emit("subscribe");
+    game.isSubscribed = true;
   },
 
   unsubscribeFromUpdates() {
     game.socket.emit("unsubscribe");
+    game.isSubscribed = false;
   },
 
   joinGame() {
+    game.isSubscribed = true;
     game.socket.emit(
       "join",
       { debug: { colliderWireframes: game.debug.colliderWireframes } },
@@ -290,15 +296,22 @@ function gameLoop(currentTime = 0) {
   oldTime = currentTime;
   accumulator += frameTime;
 
-  const entered = queryBoxEnter(game.world);
+  const entered = queryPhysicsBodyEnter(game.world);
   if (entered.length > 0) {
     console.log("+enter box query: ", entered);
     // add threejs cube
     for (let i = 0; i < entered.length; i++) {
       const eid = entered[i];
 
+      let geometry;
+      if (hasComponent(game.world, Box, eid)) {
+        geometry = new THREE.BoxGeometry(Box.width[eid], Box.height[eid], Box.depth[eid]);
+      } else if (hasComponent(game.world, Sphere, eid)) {
+        geometry = new THREE.SphereGeometry(Sphere.radius[eid], 32, 32);
+      }
+
       const mesh = new THREE.Mesh(
-        new THREE.BoxGeometry(Box.width[eid], Box.height[eid], Box.depth[eid]),
+        geometry,
         new THREE.MeshStandardMaterial({ color: Color.value[eid] }),
       );
       mesh.castShadow = true;
@@ -322,7 +335,7 @@ function gameLoop(currentTime = 0) {
     }
   }
 
-  const exited = queryBoxExit(game.world);
+  const exited = queryPhysicsBodyExit(game.world);
   if (exited.length > 0) {
     console.log("-exit query: ", exited);
     for (let i = 0; i < exited.length; i++) {
@@ -339,29 +352,35 @@ function gameLoop(currentTime = 0) {
     for (let i = 0; i < enteredCollider.length; i++) {
       const eid = enteredCollider[i];
 
+      let geometry;
+
       if (hasComponent(game.world, Box, eid)) {
-        const mesh = new THREE.Mesh(
-          new THREE.BoxGeometry(
-            Box.width[eid],
-            Box.height[eid],
-            Box.depth[eid],
-          ),
-          new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true }),
+        geometry = new THREE.BoxGeometry(
+          Box.width[eid],
+          Box.height[eid],
+          Box.depth[eid],
         );
-        mesh.scale.multiplyScalar(1.01);
-
-        mesh.position.set(Position.x[eid], Position.y[eid], Position.z[eid]);
-
-        mesh.quaternion.set(
-          Quaternion.x[eid],
-          Quaternion.y[eid],
-          Quaternion.z[eid],
-          Quaternion.w[eid],
-        );
-
-        mesh.name = eid + "collider";
-        game.scene.add(mesh);
+      } else if (hasComponent(game.world, Sphere, eid)) {
+        geometry = new THREE.SphereGeometry(Sphere.radius[eid], 12, 12);
       }
+
+      const mesh = new THREE.Mesh(
+        geometry,
+        new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true }),
+      );
+      mesh.scale.multiplyScalar(1.01);
+
+      mesh.position.set(Position.x[eid], Position.y[eid], Position.z[eid]);
+
+      mesh.quaternion.set(
+        Quaternion.x[eid],
+        Quaternion.y[eid],
+        Quaternion.z[eid],
+        Quaternion.w[eid],
+      );
+
+      mesh.name = eid + "collider";
+      game.scene.add(mesh);
     }
   }
 
@@ -542,6 +561,9 @@ function setupThree() {
   game.directionalLight.shadow.mapSize.height = 2048;
   game.scene.add(game.directionalLight);
 
+  const light = new THREE.HemisphereLight( 0xffffbb, 0x080820, 1 );
+  game.scene.add( light );
+
   game.controls = new OrbitControls(game.camera, game.parentDiv);
 
   // add skybox
@@ -670,6 +692,14 @@ function setupSocketIO() {
     deserialize(game.world, payload, DESERIALIZE_MODE.SYNCHRONIZE);
     console.log("world update", getAllEntities(game.world));
   });
+
+  game.socket.on("connect", () => {
+    console.log("socket.io connected");
+    if (game.isSubscribed) {
+      console.log("yes?");
+      game.subscribeToUpdates();
+    }
+  });
 }
 
 function setupECSWorld() {
@@ -689,6 +719,12 @@ function setupDebugListeners() {
         colliderWireframes: current,
       });
     });
+
+    // onChange(game.socket, "connected", (current) => {
+    //   if (game.isSubscribed) {
+    //     game.subscribeToUpdates();
+    //   }
+    // });
   }
 }
 

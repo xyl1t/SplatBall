@@ -22,8 +22,10 @@ import {
   Color,
   DisplayCollider,
   Me,
+  PhysicsBody,
   Position,
   Quaternion,
+  Sphere,
   Static,
   serialize,
 } from "shared";
@@ -49,8 +51,8 @@ const inGameEntities = new Set();
 
 const game = {
   config: {
-    tickRate: 20,
-    dt: 1 / 20,
+    tickRate: 30,
+    dt: 1 / 30,
   },
   currentTick: 0,
 };
@@ -65,17 +67,19 @@ const entityPhysicsBodyMap = new Map();
 const world = createWorld();
 const _NULL_ENTITY = addEntity(world);
 
-const queryBox = defineQuery([Position, Box, Color]);
-const queryBoxEnter = enterQuery(queryBox);
-const queryBoxExit = exitQuery(queryBox);
+const queryPhysicsBody = defineQuery([PhysicsBody]);
+const queryPhysicsBodyEnter = enterQuery(queryPhysicsBody);
+const queryPhysicsBodyExit = exitQuery(queryPhysicsBody);
 
 const queryDisplayCollider = defineQuery([DisplayCollider]);
 
 const floor = addEntity(world);
 
+addComponent(world, PhysicsBody, floor);
+
 addComponent(world, Position, floor);
 Position.x[floor] = 0;
-Position.y[floor] = -0.05;
+Position.y[floor] = -0.5;
 Position.z[floor] = 0;
 
 addComponent(world, Quaternion, floor);
@@ -102,7 +106,7 @@ for (let row = 0; width >= 0; row++) {
 
     addComponent(world, Position, firstBox);
     Position.x[firstBox] = 0;
-    Position.y[firstBox] = row + 1;
+    Position.y[firstBox] = row + 0.5;
     Position.z[firstBox] = col + col * 0.1 - width / 2;
 
     addComponent(world, Quaternion, firstBox);
@@ -115,10 +119,12 @@ for (let row = 0; width >= 0; row++) {
     Box.width[firstBox] = 1;
     Box.height[firstBox] = 1;
     Box.depth[firstBox] = 1;
-    Box.mass[firstBox] = 5;
 
     addComponent(world, Color, firstBox);
     Color.value[firstBox] = 0x00ff00;
+
+    addComponent(world, PhysicsBody, firstBox);
+    PhysicsBody.mass[firstBox] = 5;
   }
   width -= 1;
 }
@@ -160,6 +166,9 @@ io.on("connection", (socket) => {
         shift: false,
       };
 
+      addComponent(world, PhysicsBody, playerId);
+      PhysicsBody.mass[playerId] = 30;
+
       addComponent(world, Position, playerId);
       Position.x[playerId] = (Math.random() * 2 - 1) * 7;
       Position.y[playerId] = 3 + Math.random() * 4;
@@ -171,11 +180,8 @@ io.on("connection", (socket) => {
       Quaternion.z[playerId] = 0;
       Quaternion.w[playerId] = 1;
 
-      addComponent(world, Box, playerId);
-      Box.width[playerId] = 1;
-      Box.height[playerId] = 1;
-      Box.depth[playerId] = 1;
-      Box.mass[playerId] = 30;
+      addComponent(world, Sphere, playerId);
+      Sphere.radius[playerId] = 0.6;
 
       addComponent(world, Color, playerId);
       Color.value[playerId] = Math.random() * 0xffffff;
@@ -213,7 +219,7 @@ io.on("connection", (socket) => {
     logger.event("debug", "client message:", payload);
     socket.debug = payload;
     if (socket.debug.colliderWireframes) {
-      queryBox(world).forEach((eid) => {
+      queryPhysicsBody(world).forEach((eid) => {
         addComponent(world, DisplayCollider, eid);
       });
     } else {
@@ -247,16 +253,10 @@ setInterval(() => {
 
   while (accumulator >= game.config.dt) {
     // Add new entities to physics world
-    queryBoxEnter(world).forEach((eid) => {
+    queryPhysicsBodyEnter(world).forEach((eid) => {
       const body = new CANNON.Body({
-        shape: new CANNON.Box(
-          new CANNON.Vec3(
-            Box.width[eid] / 2,
-            Box.height[eid] / 2,
-            Box.depth[eid] / 2,
-          ),
-        ),
-        mass: Box.mass[eid],
+        linearDamping: 0.31,
+        mass: PhysicsBody.mass[eid],
         position: new CANNON.Vec3(
           Position.x[eid],
           Position.y[eid],
@@ -270,6 +270,18 @@ setInterval(() => {
         ),
       });
 
+      if (hasComponent(world, Box, eid)) {
+        body.addShape(new CANNON.Box(
+          new CANNON.Vec3(
+            Box.width[eid] / 2,
+            Box.height[eid] / 2,
+            Box.depth[eid] / 2,
+          ),
+        ));
+      } else if (hasComponent(world, Sphere, eid)) {
+        body.addShape(new CANNON.Sphere(Sphere.radius[eid]));
+      }
+
       if (hasComponent(world, Static, eid)) {
         body.type = CANNON.Body.STATIC;
       }
@@ -282,7 +294,7 @@ setInterval(() => {
     });
 
     // Remove entities from physics world
-    queryBoxExit(world).forEach((eid) => {
+    queryPhysicsBodyExit(world).forEach((eid) => {
       const body = entityPhysicsBodyMap.get(eid);
       if (body) {
         physicsWorld.removeBody(body);
@@ -291,7 +303,7 @@ setInterval(() => {
     });
 
     // Get positions and rotations from physics world and update components in the ecs world
-    queryBox(world).forEach((eid) => {
+    queryPhysicsBody(world).forEach((eid) => {
       const body = entityPhysicsBodyMap.get(eid);
       if (body) {
         Position.x[eid] = body.position.x;
