@@ -107,7 +107,7 @@ const game = {
     left: false,
     right: false,
   },
-  inputQueue: [], // TODO: implement input queue
+  //inputQueue: [], // TODO: implement input queue? maybe?
 
   gameLoopRequestId: undefined,
 
@@ -530,6 +530,8 @@ function setupThree() {
   game.renderer.setPixelRatio(window.devicePixelRatio);
   game.renderer.shadowMap.enabled = true;
   game.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  game.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  game.outputEncoding = THREE.sRGBEncoding;
   game.parentDiv.appendChild(game.renderer.domElement);
 
   game.clock = new THREE.Clock();
