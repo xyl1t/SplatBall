@@ -42,15 +42,66 @@ pnpm run server
 These two will start the client and server in development mode, meaning that it
 will look for code changes and restart automatically.
 
-For debugging, append `?debug` to the url: `http://localhost:5173?debug`
+For debugging, append `?debug` to the url: `http://localhost:5173/?debug`
 
 ## Deployment
 
-This script build the frontend and starts the server.
+This script will build the frontend and start the server.
 
 ```
 pnpm start
 ```
+
+The application will be accessible under `http://localhost:8080/?debug`
+
+## Using local bitECS for development
+
+The project uses an external GitHub repo for bitECS instead of the local
+submodule, but it may be more practical to use the local one for development.
+
+To do that, you first have to add the package/directory to the workspace
+definition file `pnpm-workspace.yaml`:
+
+```yaml
+packages:
+  - server
+  - client
+  - shared
+  - bitECS # Add this
+```
+
+Then, remove bitECS and reinstall using the `--workspace` argument in each
+directory (client, server and shared).
+
+```sh
+cd client
+pnpm remove bitecs
+pnpm add bitecs --workspace
+
+cd ../server
+pnpm remove bitecs
+pnpm add bitecs --workspace
+
+cd ../shared
+pnpm remove bitecs
+pnpm add bitecs --workspace
+```
+
+To update the lock file, also enter this command in the root directory.
+```sh
+pnpm i
+```
+
+When you have pushed your changes to your repo, remove bitECS from the workspace and remove and add bitECS as a git repo:
+```sh
+cd client
+pnpm remove bitecs
+pnpm add gitHubUsername/bitECS#branch-name
+
+# same for server/ and shared/
+```
+
+And then again run `pnpm i` in the root directory to clean up the lock file.
 
 ## Resources
 

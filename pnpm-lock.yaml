@@ -12,7 +12,7 @@ importers:
     dependencies:
       bitecs:
         specifier: github:xyl1t/bitECS#map-replacing-deserialization-mode
-        version: github.com/xyl1t/bitECS/d93e57612a56c52d8434e47fed3dbf4e558caabb
+        version: github.com/xyl1t/bitECS/a992a293dc2b60363015ecc382bc514558c69eff
       react:
         specifier: ^18.2.0
         version: 18.2.0
@@ -70,7 +70,10 @@ importers:
     dependencies:
       bitecs:
         specifier: github:xyl1t/bitECS#map-replacing-deserialization-mode
-        version: github.com/xyl1t/bitECS/d93e57612a56c52d8434e47fed3dbf4e558caabb
+        version: github.com/xyl1t/bitECS/a992a293dc2b60363015ecc382bc514558c69eff
+      cannon-es:
+        specifier: ^0.20.0
+        version: 0.20.0
       cors:
         specifier: ^2.8.5
         version: 2.8.5
@@ -95,7 +98,7 @@ importers:
     dependencies:
       bitecs:
         specifier: github:xyl1t/bitECS#map-replacing-deserialization-mode
-        version: github.com/xyl1t/bitECS/d93e57612a56c52d8434e47fed3dbf4e558caabb
+        version: github.com/xyl1t/bitECS/a992a293dc2b60363015ecc382bc514558c69eff
 
 packages:
 
@@ -1128,6 +1131,10 @@ packages:
   /caniuse-lite@1.0.30001571:
     resolution: {integrity: sha512-tYq/6MoXhdezDLFZuCO/TKboTzuQ/xR5cFdgXPfDtM7/kchBO3b4VWghE/OAi/DV7tTdhmLjZiZBZi1fA/GheQ==}
     dev: true
+
+  /cannon-es@0.20.0:
+    resolution: {integrity: sha512-eZhWTZIkFOnMAJOgfXJa9+b3kVlvG+FX4mdkpePev/w/rP5V8NRquGyEozcjPfEoXUlb+p7d9SUcmDSn14prOA==}
+    dev: false
 
   /chalk@2.4.2:
     resolution: {integrity: sha512-Mti+f9lpJNcwF4tWV8/OrTTtF1gZi+f8FqlyAdouralcFWFQWF2+NgCHShjkCb+IFBLq9buZwE1xckQU4peSuQ==}
@@ -3523,8 +3530,8 @@ packages:
     engines: {node: '>=10'}
     dev: true
 
-  github.com/xyl1t/bitECS/d93e57612a56c52d8434e47fed3dbf4e558caabb:
-    resolution: {tarball: https://codeload.github.com/xyl1t/bitECS/tar.gz/d93e57612a56c52d8434e47fed3dbf4e558caabb}
+  github.com/xyl1t/bitECS/a992a293dc2b60363015ecc382bc514558c69eff:
+    resolution: {tarball: https://codeload.github.com/xyl1t/bitECS/tar.gz/a992a293dc2b60363015ecc382bc514558c69eff}
     name: bitecs
     version: 0.3.40
     dev: false

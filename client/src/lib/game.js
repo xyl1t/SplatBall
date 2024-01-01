@@ -16,15 +16,34 @@ import {
   registerComponent,
   exitQuery,
   getEntityComponents,
+  hasComponent,
 } from "bitecs";
-import { componentNames, Me, Position, deserialize } from "shared";
+import {
+  componentNames,
+  Me,
+  Position,
+  deserialize,
+  Box,
+  Color,
+  DisplayCollider,
+  Quaternion,
+  PhysicsBody,
+  Sphere,
+} from "shared";
 const URL =
   process.env.NODE_ENV === "production" ? undefined : "http://localhost:8080";
 
-const meQuery = defineQuery([Me]);
-const positionQuery = defineQuery([Position]);
-const enteredPositionQuery = enterQuery(positionQuery);
-const exitedPositionQuery = exitQuery(positionQuery);
+const queryMe = defineQuery([Me]);
+
+const queryPosition = defineQuery([Position]);
+
+const queryPhysicsBody = defineQuery([PhysicsBody]);
+const queryPhysicsBodyEnter = enterQuery(queryPhysicsBody);
+const queryPhysicsBodyExit = exitQuery(queryPhysicsBody);
+
+const queryDisplayCollider = defineQuery([DisplayCollider]);
+const queryColliderEnter = enterQuery(queryDisplayCollider);
+const queryColliderExit = exitQuery(queryDisplayCollider);
 
 const game = {
   // NOTE: this is the default config
@@ -55,10 +74,11 @@ const game = {
     },
     tickrate: 20,
     dt: 1 / 20,
-    lerpRatio: 0.125,
+    lerpRatio: 0.5,
   },
 
   isSetup: false,
+  isSubscribed: false,
 
   currentTick: 0,
 
@@ -80,6 +100,7 @@ const game = {
   playerId: undefined,
 
   keyboard: {},
+  keyCode: {},
   mouse: {
     x: 0,
     y: 0,
@@ -91,17 +112,21 @@ const game = {
   gameLoopRequestId: undefined,
 
   debug: {
+    propertyListeners: [],
     enabled: window.location.search.includes("debug"),
     domElement: undefined,
     gridHelper: undefined,
     axesHelper: undefined,
+    colliderWireframes: false,
     labels: {
       eids: true,
       components: false,
       componentDetails: true,
       update: function () {
-        positionQuery(game.world).forEach((eid) => {
+        queryPosition(game.world).forEach((eid) => {
           const obj = game.scene.getObjectByName(eid);
+          if (!obj) return;
+
           let textContent = "";
           if (game.debug.labels.eids)
             textContent += `eid: ${eid} ${
@@ -149,6 +174,7 @@ const game = {
     setupEventListeners();
     setupSocketIO();
     setupECSWorld();
+    setupDebugListeners();
 
     game.isSetup = true;
   },
@@ -158,11 +184,11 @@ const game = {
     game.gameLoopRequestId = window.requestAnimationFrame(gameLoop);
   },
 
-  setDebug(enabled) {
+  setDebug(isEnabled) {
     // game.debug.enabled = !game.debug.enabled;
     console.log("Debug mode ", game.debug.enabled ? "ON" : "OFF");
-    game.debug.enabled = enabled;
-    if (enabled) {
+    game.debug.enabled = isEnabled;
+    if (isEnabled) {
       game.debug.axesHelper.visible = true;
       game.debug.gridHelper.visible = true;
       game.debug.labels.eids = true;
@@ -177,10 +203,6 @@ const game = {
       game.debug.labels.componentDetails = false;
       game.camera.layers.disable(1);
     }
-  },
-
-  toggleDebug() {
-    game.setDebug(!game.debug.enabled);
   },
 
   addAxesHelper(size) {
@@ -205,20 +227,23 @@ const game = {
 
   subscribeToUpdates() {
     game.socket.emit("subscribe");
+    game.isSubscribed = true;
   },
 
   unsubscribeFromUpdates() {
     game.socket.emit("unsubscribe");
+    game.isSubscribed = false;
   },
 
   joinGame() {
+    game.isSubscribed = true;
     game.socket.emit(
       "join",
-      { payload: "initialization of player" },
+      { debug: { colliderWireframes: game.debug.colliderWireframes } },
       (response) => {
-        deserialize(game.world, response, DESERIALIZE_MODE.MAP_REPLACING);
+        deserialize(game.world, response, DESERIALIZE_MODE.SYNCHRONIZE);
 
-        game.playerId = meQuery(game.world)[0];
+        game.playerId = queryMe(game.world)[0];
 
         console.log("player joined, playerId: ", game.playerId);
       },
@@ -271,15 +296,23 @@ function gameLoop(currentTime = 0) {
   oldTime = currentTime;
   accumulator += frameTime;
 
-  const entered = enteredPositionQuery(game.world);
+  const entered = queryPhysicsBodyEnter(game.world);
   if (entered.length > 0) {
-    console.log("+enter query: ", entered);
+    console.log("+enter box query: ", entered);
     // add threejs cube
     for (let i = 0; i < entered.length; i++) {
       const eid = entered[i];
+
+      let geometry;
+      if (hasComponent(game.world, Box, eid)) {
+        geometry = new THREE.BoxGeometry(Box.width[eid], Box.height[eid], Box.depth[eid]);
+      } else if (hasComponent(game.world, Sphere, eid)) {
+        geometry = new THREE.SphereGeometry(Sphere.radius[eid], 32, 32);
+      }
+
       const mesh = new THREE.Mesh(
-        new THREE.BoxGeometry(1, 1, 1),
-        new THREE.MeshStandardMaterial({ color: 0x00ff00 }),
+        geometry,
+        new THREE.MeshStandardMaterial({ color: Color.value[eid] }),
       );
       mesh.castShadow = true;
       mesh.receiveShadow = true;
@@ -300,11 +333,9 @@ function gameLoop(currentTime = 0) {
 
       game.scene.add(mesh);
     }
-
-    if (game.debug.enabled) game.debug.labels.update();
   }
 
-  const exited = exitedPositionQuery(game.world);
+  const exited = queryPhysicsBodyExit(game.world);
   if (exited.length > 0) {
     console.log("-exit query: ", exited);
     for (let i = 0; i < exited.length; i++) {
@@ -314,6 +345,64 @@ function gameLoop(currentTime = 0) {
       game.scene.remove(mesh);
     }
   }
+
+  const enteredCollider = queryColliderEnter(game.world);
+  if (enteredCollider.length > 0) {
+    console.log("enteredCollider: ", enteredCollider);
+    for (let i = 0; i < enteredCollider.length; i++) {
+      const eid = enteredCollider[i];
+
+      let geometry;
+
+      if (hasComponent(game.world, Box, eid)) {
+        geometry = new THREE.BoxGeometry(
+          Box.width[eid],
+          Box.height[eid],
+          Box.depth[eid],
+        );
+      } else if (hasComponent(game.world, Sphere, eid)) {
+        geometry = new THREE.SphereGeometry(Sphere.radius[eid], 12, 12);
+      }
+
+      const mesh = new THREE.Mesh(
+        geometry,
+        new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true }),
+      );
+      mesh.scale.multiplyScalar(1.01);
+
+      mesh.position.set(Position.x[eid], Position.y[eid], Position.z[eid]);
+
+      mesh.quaternion.set(
+        Quaternion.x[eid],
+        Quaternion.y[eid],
+        Quaternion.z[eid],
+        Quaternion.w[eid],
+      );
+
+      mesh.name = eid + "collider";
+      game.scene.add(mesh);
+    }
+  }
+
+  const exitedCollider = queryColliderExit(game.world);
+  if (exitedCollider.length > 0) {
+    console.log("exitedCollider: ", exitedCollider);
+    exitedCollider.forEach((eid) => {
+      const mesh = game.scene.getObjectByName(eid + "collider");
+      game.scene.remove(mesh);
+    });
+  }
+
+  queryDisplayCollider(game.world).forEach((eid) => {
+    const obj = game.scene.getObjectByName(eid + "collider");
+    obj.quaternion.set(
+      Quaternion.x[eid],
+      Quaternion.y[eid],
+      Quaternion.z[eid],
+      Quaternion.w[eid],
+    );
+    obj.position.set(Position.x[eid], Position.y[eid], Position.z[eid]);
+  });
 
   // TODO: do we even need a loop with fixed timestep?
   while (accumulator >= game.config.dt) {
@@ -325,7 +414,7 @@ function gameLoop(currentTime = 0) {
   }
 
   // Update positions
-  positionQuery(game.world).forEach((eid) => {
+  queryPosition(game.world).forEach((eid) => {
     const obj = game.scene.getObjectByName(eid);
 
     const newPos = new THREE.Vector3(
@@ -334,12 +423,22 @@ function gameLoop(currentTime = 0) {
       Position.z[eid],
     );
 
+    const newRot = new THREE.Quaternion(
+      Quaternion.x[eid],
+      Quaternion.y[eid],
+      Quaternion.z[eid],
+      Quaternion.w[eid],
+    );
+
     obj?.position?.lerp(newPos, game.config.lerpRatio);
+    obj?.quaternion?.slerp(newRot, game.config.lerpRatio);
   });
 
   if (game.debug.enabled) {
     game.debug.labels.update();
   }
+
+  handlePropertyListeners();
 
   game.renderer.render(game.scene, game.camera);
   game.labelRenderer?.render(game.scene, game.camera);
@@ -369,22 +468,22 @@ function getInputPayload() {
 
   let hasInput = false;
 
-  if (game.keyboard.w) {
+  if (game.keyboard.w || game.keyboard.arrowup) {
     inputPayload.x = 1;
     hasInput = true;
   }
 
-  if (game.keyboard.s) {
+  if (game.keyboard.s || game.keyboard.arrowdown) {
     inputPayload.x = -1;
     hasInput = true;
   }
 
-  if (game.keyboard.a) {
+  if (game.keyboard.a || game.keyboard.arrowleft) {
     inputPayload.z = -1;
     hasInput = true;
   }
 
-  if (game.keyboard.d) {
+  if (game.keyboard.d || game.keyboard.arrowright) {
     inputPayload.z = 1;
     hasInput = true;
   }
@@ -430,6 +529,7 @@ function setupThree() {
   // for retina displays (macs, phones, etc.)
   game.renderer.setPixelRatio(window.devicePixelRatio);
   game.renderer.shadowMap.enabled = true;
+  game.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   game.parentDiv.appendChild(game.renderer.domElement);
 
   game.clock = new THREE.Clock();
@@ -451,9 +551,27 @@ function setupThree() {
   game.directionalLight.position.set(
     ...Object.values(game.config.directionalLight.position),
   );
+  game.directionalLight.shadow.camera.near = 0.1;
+  game.directionalLight.shadow.camera.far = 500;
+  game.directionalLight.shadow.camera.left = -50;
+  game.directionalLight.shadow.camera.right = 50;
+  game.directionalLight.shadow.camera.top = 50;
+  game.directionalLight.shadow.camera.bottom = -50;
+  game.directionalLight.shadow.mapSize.width = 2048;
+  game.directionalLight.shadow.mapSize.height = 2048;
   game.scene.add(game.directionalLight);
 
+  const light = new THREE.HemisphereLight( 0xffffbb, 0x080820, 1 );
+  game.scene.add( light );
+
   game.controls = new OrbitControls(game.camera, game.parentDiv);
+
+  // add skybox
+  const textureLoader = new THREE.TextureLoader();
+  const backgroundTexture = textureLoader.load("skybox.jpg");
+  backgroundTexture.mapping = THREE.EquirectangularReflectionMapping;
+  backgroundTexture.colorSpace = THREE.SRGBColorSpace;
+  game.scene.background = backgroundTexture;
 }
 
 function setupDebugView() {
@@ -493,27 +611,36 @@ function onWindowResize() {
 }
 
 function onKeyDown(event) {
-  console.log("key down:", event.key);
-  game.keyboard[event.key.toLowerCase()] = true;
-
-  if (game.keyboard["shift"] && game.keyboard["control"]) {
-    if (game.keyboard.d) {
-      game.toggleDebug();
-    }
-  }
+  const key = event.key.toLowerCase();
+  // console.log("key down:", event);
+  game.keyboard[key] = true;
+  game.keyCode[event.code] = true;
 
   if (game.keyboard["f12"]) {
-    game.toggleDebug();
+    game.debug.enabled = !game.debug.enabled;
   }
 
-  if (game.keyboard["j"]) {
-    game.joinGame();
+  // Debug keys
+
+  // NOTE: it's necessary to use the "code" from the event instead of the "key"
+  // because clicking alt+key will register a different character
+  if (game.keyCode["AltLeft"] && game.keyCode["ControlLeft"]) {
+    if (game.keyCode.KeyD) {
+      game.debug.enabled = !game.debug.enabled;
+    }
+    if (game.keyCode.KeyJ) {
+      game.joinGame();
+    }
+    if (game.keyCode.KeyL) {
+      game.leaveGame();
+    }
   }
 }
 
 function onKeyUp(event) {
   // console.log("key up:", event.key);
   game.keyboard[event.key.toLowerCase()] = false;
+  game.keyCode[event.code] = false;
 }
 
 function onMouseMove(event) {
@@ -562,8 +689,16 @@ function setupSocketIO() {
   });
 
   game.socket.on("update", (payload) => {
-    deserialize(game.world, payload, DESERIALIZE_MODE.MAP_REPLACING);
-    console.log(getAllEntities(game.world));
+    deserialize(game.world, payload, DESERIALIZE_MODE.SYNCHRONIZE);
+    console.log("world update", getAllEntities(game.world));
+  });
+
+  game.socket.on("connect", () => {
+    console.log("socket.io connected");
+    if (game.isSubscribed) {
+      console.log("yes?");
+      game.subscribeToUpdates();
+    }
   });
 }
 
@@ -571,6 +706,44 @@ function setupECSWorld() {
   game.world = createWorld();
 
   registerComponent(game.world, Position);
+}
+
+function setupDebugListeners() {
+  if (game.debug.enabled) {
+    onChange(game.debug, "enabled", (current) => {
+      game.setDebug(current);
+    });
+    onChange(game.debug, "colliderWireframes", (current) => {
+      console.log("colliderWireframes: ", current);
+      game.socket.emit("debug", {
+        colliderWireframes: current,
+      });
+    });
+
+    // onChange(game.socket, "connected", (current) => {
+    //   if (game.isSubscribed) {
+    //     game.subscribeToUpdates();
+    //   }
+    // });
+  }
+}
+
+function onChange(obj, property, callback) {
+  game.debug.propertyListeners.push({
+    prev: undefined,
+    obj,
+    property,
+    callback,
+  });
+}
+
+function handlePropertyListeners() {
+  game.debug.propertyListeners.forEach((listener) => {
+    if (listener.prev !== listener.obj[listener.property]) {
+      listener.prev = listener.obj[listener.property];
+      listener.callback(listener.obj[listener.property], listener.prev);
+    }
+  });
 }
 
 export default game;
