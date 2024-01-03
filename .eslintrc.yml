@@ -1,12 +1,15 @@
 env:
   es2021: true
   node: true
-extends: eslint:recommended
-parserOptions:
-  ecmaVersion: latest
-  sourceType: module
+extends:
+  - eslint:recommended
+  - plugin:@typescript-eslint/recommended
+parser: "@typescript-eslint/parser"
+plugins: ["@typescript-eslint"]
 ignorePatterns: ["bitECS"]
 rules:
+  "@typescript-eslint/no-explicit-any":
+    - off
   indent:
     - error
     - 2

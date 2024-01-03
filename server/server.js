@@ -98,36 +98,47 @@ Box.depth[floor] = 15;
 addComponent(world, Color, floor);
 Color.value[floor] = 0xa89971;
 
+const wallids = [];
+
 // NOTE: Creates a simple wall of boxes for testing
-let width = 5;
-for (let row = 0; width >= 0; row++) {
-  for (let col = 0; col < width; col++) {
-    const firstBox = addEntity(world);
+function addTestWall(width) {
 
-    addComponent(world, Position, firstBox);
-    Position.x[firstBox] = 0;
-    Position.y[firstBox] = row + 0.5;
-    Position.z[firstBox] = col + col * 0.1 - width / 2;
+  wallids.forEach((eid) => {
+    removeEntity(world, eid);
+  });
 
-    addComponent(world, Quaternion, firstBox);
-    Quaternion.x[firstBox] = 0;
-    Quaternion.y[firstBox] = 0;
-    Quaternion.z[firstBox] = 0;
-    Quaternion.w[firstBox] = 1;
+  for (let row = 0; width >= 0; row++) {
+    for (let col = 0; col < width; col++) {
+      const eid = addEntity(world);
 
-    addComponent(world, Box, firstBox);
-    Box.width[firstBox] = 1;
-    Box.height[firstBox] = 1;
-    Box.depth[firstBox] = 1;
+      wallids.push(eid);
 
-    addComponent(world, Color, firstBox);
-    Color.value[firstBox] = 0x00ff00;
+      addComponent(world, Position, eid);
+      Position.x[eid] = 0;
+      Position.y[eid] = row + 0.5;
+      Position.z[eid] = col + col * 0.1 - width / 2;
 
-    addComponent(world, PhysicsBody, firstBox);
-    PhysicsBody.mass[firstBox] = 5;
+      addComponent(world, Quaternion, eid);
+      Quaternion.x[eid] = 0;
+      Quaternion.y[eid] = 0;
+      Quaternion.z[eid] = 0;
+      Quaternion.w[eid] = 1;
+
+      addComponent(world, Box, eid);
+      Box.width[eid] = 1;
+      Box.height[eid] = 1;
+      Box.depth[eid] = 1;
+
+      addComponent(world, Color, eid);
+      Color.value[eid] = 0x00ff00;
+
+      addComponent(world, PhysicsBody, eid);
+      PhysicsBody.mass[eid] = 5;
+    }
+    width -= 1;
   }
-  width -= 1;
 }
+addTestWall(5);
 
 io.on("connection", (socket) => {
   logger.event(green("connection"), "socket id:", socket.id);
@@ -227,6 +238,11 @@ io.on("connection", (socket) => {
         removeComponent(world, DisplayCollider, eid);
       });
     }
+  });
+
+  socket.on("testWall", (payload) => {
+    logger.event("testWall", "client message:", payload);
+    addTestWall(5);
   });
 
   socket.on("disconnect", (reason) => {

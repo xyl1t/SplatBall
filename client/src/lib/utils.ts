@@ -5,13 +5,8 @@
  * @param   {*} ...objs  The arrays or objects to merge
  * @returns {*}          The merged arrays or objects
  */
-export function deepMerge(...objs) {
-  /**
-   * Get the object type
-   * @param  {*}       obj The object
-   * @return {String}      The object type
-   */
-  function getType(obj) {
+export function deepMerge(...objs: any): any {
+  function getType(obj: any): string {
     return Object.prototype.toString.call(obj).slice(8, -1).toLowerCase();
   }
 
@@ -19,7 +14,7 @@ export function deepMerge(...objs) {
    * Deep merge two objects
    * @return {Object}
    */
-  function mergeObj(clone, obj) {
+  function mergeObj(clone: any, obj: any): any {
     for (let [key, value] of Object.entries(obj)) {
       let type = getType(value);
       if (
