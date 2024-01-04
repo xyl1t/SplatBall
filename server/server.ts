@@ -1,4 +1,5 @@
-const PORT = process.env.NODE_ENV === "production" ? 80 : 8080;
+// const PORT = process.env.NODE_ENV === "production" ? 80 : 8080;
+const PORT = process.env.PORT ?? 8080;
 import express from "express";
 const app = express();
 import cors from "cors";
