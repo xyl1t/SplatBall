@@ -8,6 +8,8 @@ parser: "@typescript-eslint/parser"
 plugins: ["@typescript-eslint"]
 ignorePatterns: ["bitECS"]
 rules:
+  "@typescript-eslint/no-unused-vars": 
+    - off
   "@typescript-eslint/no-explicit-any":
     - off
   indent:
