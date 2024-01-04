@@ -4,7 +4,7 @@ const app = express();
 import cors from "cors";
 import * as http from "http";
 const server = http.createServer(app);
-import { Server } from "socket.io";
+import { Server, Socket } from "socket.io";
 import {
   addComponent,
   addEntity,
@@ -16,7 +16,7 @@ import {
   exitQuery,
   hasComponent,
 } from "bitecs";
-import logger, { colors, green, red } from "./utils/logger.js";
+import logger, { colors, green, red } from "./utils/logger";
 import {
   Box,
   Color,
@@ -31,6 +31,7 @@ import {
 } from "shared";
 import * as CANNON from "cannon-es";
 
+// TODO: add types to server
 const io = new Server(server, {
   cors: {
     origin: "http://localhost:5173", // NOTE: for development
@@ -44,10 +45,10 @@ logger.addWithSubType("event", colors.fgMagenta);
 logger.addType("server", colors.fgWhite);
 
 // world.name = "SplatBallEcsWorld";
-const connectedSockets = [];
-const subscribedSockets = new Set();
-const inGameSockets = new Set(); // NOTE: actually in game players, but stored as sockets (sockets also have an entity id property)
-const inGameEntities = new Set();
+const connectedSockets: Socket[] = [];
+const subscribedSockets = new Set<Socket>();
+const inGameSockets = new Set<Socket>(); // NOTE: actually in game players, but stored as sockets (sockets also have an entity id property)
+const inGameEntities = new Set<number>();
 
 const game = {
   config: {
@@ -98,43 +99,54 @@ Box.depth[floor] = 15;
 addComponent(world, Color, floor);
 Color.value[floor] = 0xa89971;
 
+const wallids: number[] = [];
+
 // NOTE: Creates a simple wall of boxes for testing
-let width = 5;
-for (let row = 0; width >= 0; row++) {
-  for (let col = 0; col < width; col++) {
-    const firstBox = addEntity(world);
+function addTestWall(width: number) {
 
-    addComponent(world, Position, firstBox);
-    Position.x[firstBox] = 0;
-    Position.y[firstBox] = row + 0.5;
-    Position.z[firstBox] = col + col * 0.1 - width / 2;
+  wallids.forEach((eid) => {
+    removeEntity(world, eid);
+  });
 
-    addComponent(world, Quaternion, firstBox);
-    Quaternion.x[firstBox] = 0;
-    Quaternion.y[firstBox] = 0;
-    Quaternion.z[firstBox] = 0;
-    Quaternion.w[firstBox] = 1;
+  for (let row = 0; width >= 0; row++) {
+    for (let col = 0; col < width; col++) {
+      const eid = addEntity(world);
 
-    addComponent(world, Box, firstBox);
-    Box.width[firstBox] = 1;
-    Box.height[firstBox] = 1;
-    Box.depth[firstBox] = 1;
+      wallids.push(eid);
 
-    addComponent(world, Color, firstBox);
-    Color.value[firstBox] = 0x00ff00;
+      addComponent(world, Position, eid);
+      Position.x[eid] = 0;
+      Position.y[eid] = row + 0.5;
+      Position.z[eid] = col + col * 0.1 - width / 2;
 
-    addComponent(world, PhysicsBody, firstBox);
-    PhysicsBody.mass[firstBox] = 5;
+      addComponent(world, Quaternion, eid);
+      Quaternion.x[eid] = 0;
+      Quaternion.y[eid] = 0;
+      Quaternion.z[eid] = 0;
+      Quaternion.w[eid] = 1;
+
+      addComponent(world, Box, eid);
+      Box.width[eid] = 1;
+      Box.height[eid] = 1;
+      Box.depth[eid] = 1;
+
+      addComponent(world, Color, eid);
+      Color.value[eid] = 0x00ff00;
+
+      addComponent(world, PhysicsBody, eid);
+      PhysicsBody.mass[eid] = 5;
+    }
+    width -= 1;
   }
-  width -= 1;
 }
+addTestWall(5);
 
 io.on("connection", (socket) => {
   logger.event(green("connection"), "socket id:", socket.id);
 
   connectedSockets.push(socket);
 
-  socket.eid = null;
+  socket.data.eid = null;
 
   socket.on("subscribe", (payload) => {
     logger.event("subscribe", "client message:", payload);
@@ -148,18 +160,18 @@ io.on("connection", (socket) => {
 
   socket.on("join", (payload, callback) => {
     logger.event("join", "client message:", payload);
-    if (socket.eid) {
+    if (socket.data.eid) {
       logger.warn(
-        `This player has already been initialized, not re-initializing! (eid: ${socket.eid}, socket id: ${socket.id})`,
+        `This player has already been initialized, not re-initializing! (eid: ${socket.data.eid}, socket id: ${socket.id})`,
       );
     } else {
       const playerId = addEntity(world);
-      socket.eid = playerId;
-      socket.debug = payload.debug;
+      socket.data.eid = playerId;
+      socket.data.debug = payload.debug;
       inGameSockets.add(socket);
       inGameEntities.add(playerId);
       subscribedSockets.add(socket);
-      socket.input = {
+      socket.data.input = {
         x: 0,
         z: 0,
         space: false,
@@ -186,7 +198,7 @@ io.on("connection", (socket) => {
       addComponent(world, Color, playerId);
       Color.value[playerId] = Math.random() * 0xffffff;
 
-      if (socket.debug.colliderWireframes) {
+      if (socket.data.debug.colliderWireframes) {
         addComponent(world, DisplayCollider, playerId);
       }
 
@@ -194,7 +206,7 @@ io.on("connection", (socket) => {
       // because the entity ids on the client are not the same as on the server
       addComponent(world, Me, playerId);
 
-      const callBackPayload = serialize(world);
+      const callBackPayload = serialize(world as any[]);
       callback(callBackPayload);
 
       removeComponent(world, Me, playerId);
@@ -203,22 +215,22 @@ io.on("connection", (socket) => {
 
   socket.on("leave", (payload) => {
     logger.event("leave", "client message:", payload);
-    removeEntity(world, socket.eid);
-    inGameEntities.delete(socket.eid);
+    removeEntity(world, socket.data.eid);
+    inGameEntities.delete(socket.data.eid);
     inGameSockets.delete(socket);
-    socket.eid = null;
+    socket.data.eid = null;
   });
 
   socket.on("input", (payload) => {
     logger.event("input", "client message:", payload);
 
-    socket.input = payload;
+    socket.data.input = payload;
   });
 
   socket.on("debug", (payload) => {
     logger.event("debug", "client message:", payload);
-    socket.debug = payload;
-    if (socket.debug.colliderWireframes) {
+    socket.data.debug = payload;
+    if (socket.data.debug.colliderWireframes) {
       queryPhysicsBody(world).forEach((eid) => {
         addComponent(world, DisplayCollider, eid);
       });
@@ -229,11 +241,16 @@ io.on("connection", (socket) => {
     }
   });
 
+  socket.on("testWall", (payload) => {
+    logger.event("testWall", "client message:", payload);
+    addTestWall(5);
+  });
+
   socket.on("disconnect", (reason) => {
     logger.event(red("disconnect"), "socket id:", socket.id, "Reason:", reason);
-    removeEntity(world, socket.eid);
+    removeEntity(world, socket.data.eid);
     inGameSockets.delete(socket);
-    inGameEntities.delete(socket.eid);
+    inGameEntities.delete(socket.data.eid);
     connectedSockets.splice(connectedSockets.indexOf(socket), 1);
   });
 });
@@ -273,13 +290,13 @@ setInterval(() => {
       if (hasComponent(world, Box, eid)) {
         body.addShape(new CANNON.Box(
           new CANNON.Vec3(
-            Box.width[eid] / 2,
-            Box.height[eid] / 2,
-            Box.depth[eid] / 2,
+            Box.width[eid]! / 2,
+            Box.height[eid]! / 2,
+            Box.depth[eid]! / 2,
           ),
         ));
       } else if (hasComponent(world, Sphere, eid)) {
-        body.addShape(new CANNON.Sphere(Sphere.radius[eid]));
+        body.addShape(new CANNON.Sphere(Sphere.radius[eid]!));
       }
 
       if (hasComponent(world, Static, eid)) {
@@ -320,9 +337,9 @@ setInterval(() => {
     for (const socket of inGameSockets) {
       // Create direction vector from input
       const direction = {
-        x: socket.input.x,
-        y: socket?.input?.space ? 1 : socket?.input?.shift ? -1 : 0,
-        z: socket.input.z,
+        x: socket.data.input.x,
+        y: socket.data.input.space ? 1 : socket.data.input.shift ? -1 : 0,
+        z: socket.data.input.z,
       };
 
       // normalize position (to handle diagonal movement, otherwise diagnoal movement would be faster than straight movement)
@@ -340,21 +357,21 @@ setInterval(() => {
         z: force * direction.z,
       };
 
-      const body = entityPhysicsBodyMap.get(socket.eid);
+      const body = entityPhysicsBodyMap.get(socket.data.eid);
       body.applyForce(new CANNON.Vec3(forceVec.x, forceVec.y, forceVec.z));
 
       // Reset input
-      socket.input.x = 0;
-      socket.input.y = 0;
-      socket.input.z = 0;
-      socket.input.space = false;
-      socket.input.shift = false;
-      socket.input.left = false;
-      socket.input.right = false;
+      socket.data.input.x = 0;
+      socket.data.input.y = 0;
+      socket.data.input.z = 0;
+      socket.data.input.space = false;
+      socket.data.input.shift = false;
+      socket.data.input.left = false;
+      socket.data.input.right = false;
     }
 
     for (const socket of subscribedSockets) {
-      const payload = serialize(world);
+      const payload = serialize(world as any[]);
       socket.emit("update", payload);
     }
 

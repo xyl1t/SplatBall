@@ -30,7 +30,6 @@ export const Box = defineComponent({
   width: Types.f32,
   height: Types.f32,
   depth: Types.f32,
-  mass: Types.f32,
 });
 
 export const Sphere = defineComponent({
@@ -62,6 +61,6 @@ const serializationConfig = Array.from(componentNames.keys());
 export const serialize = defineSerializer(serializationConfig);
 export const deserialize = defineDeserializer(serializationConfig);
 
-function varToString(varObj) {
+function varToString(varObj: any) {
   return Object.keys(varObj)[0];
 }

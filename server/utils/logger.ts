@@ -28,39 +28,39 @@ export const colors = {
   bgGray: "\x1b[100m",
 };
 
-export function gray(text) {
+export function gray(text: string) {
   return colors.fgGray + text + colors.reset;
 }
 
-export function white(text) {
+export function white(text: string) {
   return colors.fgWhite + text + colors.reset;
 }
 
-export function cyan(text) {
+export function cyan(text: string) {
   return colors.fgCyan + text + colors.reset;
 }
 
-export function magenta(text) {
+export function magenta(text: string) {
   return colors.fgMagenta + text + colors.reset;
 }
 
-export function blue(text) {
+export function blue(text: string) {
   return colors.fgBlue + text + colors.reset;
 }
 
-export function yellow(text) {
+export function yellow(text: string) {
   return colors.fgYellow + text + colors.reset;
 }
 
-export function green(text) {
+export function green(text: string) {
   return colors.fgGreen + text + colors.reset;
 }
 
-export function red(text) {
+export function red(text: string) {
   return colors.fgRed + text + colors.reset;
 }
 
-export function black(text) {
+export function black(text: string) {
   return colors.fgBlack + text + colors.reset;
 }
 
@@ -68,7 +68,7 @@ const getTime = () => {
   return new Date().toISOString().slice(11, 23);
 };
 
-const log = (type, color, ...message) => {
+const log = (type: string, color: string, ...message: string[]) => {
   console.log(
     colors.fgGray + `[${getTime()}]` + colors.reset,
     `${color}[${type}${color}]${colors.reset}`, // NOTE: add ${color} after ${type} in case the ${type} also has color
@@ -76,36 +76,36 @@ const log = (type, color, ...message) => {
   );
 };
 
-const logger = {
-  addType: (type, color) => {
-    logger[type] = (...message) => {
+const logger: { [key:string]: any } = {
+  addType: (type: string, color: string) => {
+    logger[type] = (...message: string[]) => {
       log(type, color, ...message);
     };
   },
 
-  addWithSubType: (type, color) => {
-    logger[type] = (subType, ...message) => {
+  addWithSubType: (type: string, color: string) => {
+    logger[type] = (subType: string, ...message: string[]) => {
       log(`${type}:${subType}`, color, ...message);
     };
   },
 
-  info: (...message) => {
+  info: (...message: string[]) => {
     log("info", colors.fgCyan, ...message);
   },
 
-  error: (...message) => {
+  error: (...message: string[]) => {
     log("error", colors.fgRed, ...message);
   },
 
-  warn: (...message) => {
+  warn: (...message: string[]) => {
     log("warning", colors.fgYellow, ...message);
   },
 
-  success: (...message) => {
+  success: (...message: string[]) => {
     log("success", colors.fgGreen, ...message);
   },
 
-  debug: (...message) => {
+  debug: (...message: string[]) => {
     log("debug", colors.fgGray, ...message);
   },
 };
