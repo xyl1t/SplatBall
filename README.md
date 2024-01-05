@@ -34,7 +34,7 @@ Most commonly you will run the dev scripts for the client and server. You can
 either enter the according directory and run `pnpm run dev` or, execute them
 from the root of the directory like this:
 
-```
+```sh
 pnpm run client
 pnpm run server
 ```
@@ -42,17 +42,31 @@ pnpm run server
 These two will start the client and server in development mode, meaning that it
 will look for code changes and restart automatically.
 
-For debugging, append `?debug` to the url: `http://localhost:5173/?debug`
+Don't forget to build the `shared` package when you edit it! Just run `pnpm run
+build` in it's directory.
 
-## Deployment
+<!--For debugging, append `?debug` to the url: `http://localhost:5173/?debug`-->
 
-This script will build the frontend and start the server.
+## Running for production
 
-```
+This script will compile the project to javascript and then run the server.
+
+```sh
 pnpm start
 ```
 
-The application will be accessible under `http://localhost:8080/?debug`
+The application will be accessible under `http://localhost:8080`
+
+You can also specify a custom port. In bash you would do:
+
+```sh
+PORT=8081 pnpm start
+```
+
+If you want to run the server without rebuilding. Use this command:
+```sh
+pnpm run production-server
+```
 
 ## Using local bitECS for development
 
