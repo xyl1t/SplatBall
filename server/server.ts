@@ -17,7 +17,7 @@ import {
   exitQuery,
   hasComponent,
 } from "bitecs";
-import logger, { colors, green, red } from "./utils/logger";
+import logger, { colors, green, red } from "./utils/logger.js";
 import {
   Box,
   Color,
