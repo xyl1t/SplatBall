@@ -4,10 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "pnpm --filter shared build && pnpm --filter client build && pnpm --filter server build && node server/dist/server.js",
+    "start": "pnpm --filter shared build && pnpm --filter client build && pnpm --filter server build && cd server && node dist/server.js",
     "client": "pnpm --filter client run dev",
     "server": "pnpm --filter server run dev",
-    "production-server": "cd server && node server/dist/server.js",
+    "production-server": "cd server && node dist/server.js",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0"
   },
   "keywords": [],
