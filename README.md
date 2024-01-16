@@ -38,9 +38,9 @@ The project is divided into three parts/directories:
 - `server/`: This is the server of the game. It serves the client and manages
   the socket/player connections (using [Socket.IO](https://socket.io/)), it also
   holds the state of the game according to the ECS pattern (using
-  [bitECS](https://github.com/NateTheGreatt/bitECS)) and sends it to the
-  clients for rendering. For physics,
-  [cannon-es](https://github.com/pmndrs/cannon-es) is used.
+  [bitECS](https://github.com/NateTheGreatt/bitECS) which has been forked to
+  accommodate our needs) and sends it to the clients for rendering. For
+  physics, [cannon-es](https://github.com/pmndrs/cannon-es) is used.
 
 - `client/`: The client is a react application (for no real reason, could've
   been a vainlla JS client as well). It uses 
@@ -73,6 +73,10 @@ build` in it's directory.
 <!--For debugging, append `?debug` to the url: `http://localhost:5173/?debug`-->
 
 ## Using local bitECS for development
+
+The original repo has been forked in order to add a new serialisation mode
+`DESERIALIZE_MODE.SYNCHRONIZE` which synchronizes the ECS world state in the
+client with the one coming from the server. (This might change in the future)
 
 The project uses an external GitHub repo for bitECS instead of the local
 submodule, but it may be more practical to use the local one for development.
