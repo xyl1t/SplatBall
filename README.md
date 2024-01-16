@@ -6,6 +6,10 @@ wiping out the other team.
 
 ## Running
 
+> [!NOTE]
+> This project uses [pnpm](https://pnpm.io/) as its package manager because of
+> its workspace feature. It will *not* work with npm!
+
 This script will compile the project to javascript and then run the server.
 
 ```sh
@@ -27,8 +31,7 @@ pnpm run production-server
 
 ## Project structure
 
-This project uses [pnpm](https://pnpm.io/) as its package manager and makes use
-of its [workspace](https://pnpm.io/workspaces) feature.
+This project makes us of pnpm's [workspace](https://pnpm.io/workspaces) feature.
 
 The project is divided into three parts/directories:
 
