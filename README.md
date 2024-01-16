@@ -3,7 +3,29 @@
 A 3D multiplayer game where two teams build their base and then try to win by
 wiping out the other team.
 
-## Development
+
+## Running
+
+This script will compile the project to javascript and then run the server.
+
+```sh
+pnpm start
+```
+
+The application will be accessible under `http://localhost:8080`
+
+You can also specify a custom port. In bash you would do:
+
+```sh
+PORT=8081 pnpm start
+```
+
+If you want to run the server without rebuilding. Use this command:
+```sh
+pnpm run production-server
+```
+
+## Project structure
 
 This project uses [pnpm](https://pnpm.io/) as its package manager and makes use
 of its [workspace](https://pnpm.io/workspaces) feature.
@@ -25,7 +47,7 @@ The project is divided into three parts/directories:
 - `shared/`: This package contains custom code that both the server and client
   use. Currently it stores the bitECS components and systems.
 
-## Running
+## Running for development
 
 > [!TIP]
 > Check all possible scripts in the `package.json` file of each package.
@@ -46,27 +68,6 @@ Don't forget to build the `shared` package when you edit it! Just run `pnpm run
 build` in it's directory.
 
 <!--For debugging, append `?debug` to the url: `http://localhost:5173/?debug`-->
-
-## Running for production
-
-This script will compile the project to javascript and then run the server.
-
-```sh
-pnpm start
-```
-
-The application will be accessible under `http://localhost:8080`
-
-You can also specify a custom port. In bash you would do:
-
-```sh
-PORT=8081 pnpm start
-```
-
-If you want to run the server without rebuilding. Use this command:
-```sh
-pnpm run production-server
-```
 
 ## Using local bitECS for development
 
