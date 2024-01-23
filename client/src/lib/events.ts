@@ -20,6 +20,7 @@ export default function setupEventListeners(game: Game) {
   window.addEventListener("mouseup", handleMouseUp, false);
   window.addEventListener("mouseleave", handleMouseLeave, false);
 
+
   function handleWindowResize(_event: UIEvent) {
     game.camera!.aspect = window.innerWidth / window.innerHeight;
     game.camera!.updateProjectionMatrix();
@@ -61,6 +62,8 @@ export default function setupEventListeners(game: Game) {
   function handleMouseMove(event: MouseEvent) {
     game.mouse.x = event.pageX - game.renderer!.domElement.offsetLeft;
     game.mouse.y = event.pageY - game.renderer!.domElement.offsetTop;
+    game.mouse.dx = document.pointerLockElement?event.movementX*-1:0;//inverted mouse-delta, only if pointer is locked
+    game.mouse.dy = document.pointerLockElement?event.movementY*-1:0;
     game.mouse.left = (event.buttons & 1) == 1;
     game.mouse.right = (event.buttons & 2) == 2;
   }
@@ -70,6 +73,7 @@ export default function setupEventListeners(game: Game) {
     game.mouse.y = event.pageY - game.renderer!.domElement.offsetTop;
     game.mouse.left = (event.buttons & 1) == 1;
     game.mouse.right = (event.buttons & 2) == 2;
+    game.cfg.parentDomElement.requestPointerLock();
   }
 
   function handleMouseUp(event: MouseEvent) {
@@ -98,7 +102,7 @@ export function getInputPayload(game: Game) {
   };
 
   let hasInput = false;
-
+  
   if (game.keyboard.w || game.keyboard.arrowup) {
     inputPayload.x = 1;
     hasInput = true;

@@ -66,6 +66,8 @@ export type Game = {
   mouse: {
     x: number;
     y: number;
+    dx: number;
+    dy: number;
     left: boolean;
     right: boolean;
   };
@@ -82,6 +84,7 @@ export type Game = {
     controls?: OrbitControls;
     labelRenderer: CSS2DRenderer;
     propertyChangeListeners: PropertyChangeListener;
+    debugControlsActive: Boolean;
 
     labels: {
       showEids: boolean;
@@ -150,6 +153,8 @@ const game: Game = {
   mouse: {
     x: 0,
     y: 0,
+    dx: 0,
+    dy: 0,
     left: false,
     right: false,
   },
@@ -166,6 +171,7 @@ const game: Game = {
     controls: undefined,
     labelRenderer: new CSS2DRenderer(),
     propertyChangeListeners: new PropertyChangeListener(),
+    debugControlsActive: false,
 
     labels: {
       showEids: true,
@@ -232,6 +238,7 @@ const game: Game = {
     console.log("leave");
     if (!game.socket) throw new Error("Socket not initialized");
     game.socket.emit("leave");
+    game.playerId = -1;
   },
 
   gameLoop(_currentTime: number = 0) {
@@ -249,7 +256,8 @@ const game: Game = {
 
     if (game.debug.enabled) {
       labelSystem(game);
-      game.debug.controls!.update();
+      if(game.debug.debugControlsActive)
+        game.debug.controls!.update();
       game.debug.stats.update();
     }
 

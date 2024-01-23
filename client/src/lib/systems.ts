@@ -36,11 +36,38 @@ export function positionSystem(game: Game) {
       ),
       game.cfg.lerpRatio,
     );
+
     obj?.position.lerp(
       new THREE.Vector3(Position.x[eid], Position.y[eid], Position.z[eid]),
       game.cfg.lerpRatio,
     );
+
   });
+
+
+  if(game.playerId!=-1){
+    game.camera?.position.lerp(
+      new THREE.Vector3(Position.x[game.playerId], Position.y[game.playerId], Position.z[game.playerId]),
+        game.cfg.lerpRatio,
+    );
+    
+
+
+    game.camera?.rotateOnWorldAxis(new THREE.Vector3(0,1,0),game.mouse.dx*0.01);
+    game.camera?.rotateOnAxis(new THREE.Vector3(1,0,0),game.mouse.dy*0.01);
+
+
+    //reset delta values (improvable)
+    game.mouse.dx = 0;
+    game.mouse.dy = 0;
+  }else{
+    game.camera?.position.lerp(
+      new THREE.Vector3(game.cfg.initialCameraPosition.x, game.cfg.initialCameraPosition.y, game.cfg.initialCameraPosition.z),
+        game.cfg.lerpRatio,
+    );
+  }
+  
+
 }
 
 export function renderSystem(game: Game) {
