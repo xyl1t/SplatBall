@@ -1,3 +1,4 @@
+import { Quaternion, Vector3 } from "three";
 import { Game } from "./game";
 
 export default function setupEventListeners(game: Game) {
@@ -104,22 +105,42 @@ export function getInputPayload(game: Game) {
   let hasInput = false;
   
   if (game.keyboard.w || game.keyboard.arrowup) {
-    inputPayload.x = 1;
+    
+    let angleYPlayerDeg = game.camera!.rotation.y
+    //calculate x and z values based on camera direction
+    inputPayload.x = Math.sin(angleYPlayerDeg) *-1; //inverted
+    inputPayload.z = game.camera?.getWorldDirection(new Vector3()).z||0;
+
     hasInput = true;
   }
 
   if (game.keyboard.s || game.keyboard.arrowdown) {
-    inputPayload.x = -1;
+    let angleYPlayerDeg = game.camera!.rotation.y
+
+    //calculate x and z values based on camera direction
+    inputPayload.x = Math.sin(angleYPlayerDeg); 
+    inputPayload.z = (game.camera?.getWorldDirection(new Vector3()).z||0) *-1; //inverted
+
     hasInput = true;
   }
 
   if (game.keyboard.a || game.keyboard.arrowleft) {
-    inputPayload.z = -1;
+    let angleYPlayerDeg = game.camera!.rotation.y
+
+    //calculate x and z values based on camera direction
+    inputPayload.z = Math.sin(angleYPlayerDeg); 
+    inputPayload.x = (game.camera?.getWorldDirection(new Vector3()).z||0);
+
     hasInput = true;
   }
 
   if (game.keyboard.d || game.keyboard.arrowright) {
-    inputPayload.z = 1;
+    let angleYPlayerDeg = game.camera!.rotation.y
+
+    //calculate x and z values based on camera direction
+    inputPayload.z = Math.sin(angleYPlayerDeg) *-1; //inverted
+    inputPayload.x = (game.camera?.getWorldDirection(new Vector3()).z||0) *-1; //inverted
+
     hasInput = true;
   }
 
