@@ -1,4 +1,4 @@
-import { Quaternion, Vector3 } from "three";
+import { Vector3 } from "three";
 import { Game } from "./game";
 
 export default function setupEventListeners(game: Game) {
