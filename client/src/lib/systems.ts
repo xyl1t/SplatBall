@@ -54,7 +54,13 @@ export function positionSystem(game: Game) {
     );
 
     game.camera?.rotateOnWorldAxis(new THREE.Vector3(0,1,0),game.mouse.dx*0.01); //0.01 sensitivity
-    game.camera?.rotateOnAxis(new THREE.Vector3(1,0,0),game.mouse.dy*0.01);
+
+    let worldDirectionY = game.camera?.getWorldDirection(new THREE.Vector3()).y||0;
+
+    //check for y boundaries
+    if((game.mouse.dy>0&&worldDirectionY+game.mouse.dy*0.01<0.95)||(game.mouse.dy<0&&worldDirectionY+game.mouse.dy*0.01>(-0.95)))
+      game.camera?.rotateOnAxis(new THREE.Vector3(1,0,0),game.mouse.dy*0.01);
+    
 
     game.mouse.dx = 0;
     game.mouse.dy = 0;

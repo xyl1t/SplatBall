@@ -114,12 +114,15 @@ export function getInputPayload(game: Game) {
     hasInput = true;
   }
 
+  //all following events have to add up the input payload of the events before, so that for example 
+  //pressing 'w' and 's' at the same time resolves in no movement.
+
   if (game.keyboard.s || game.keyboard.arrowdown) {
     let angleYPlayerDeg = game.camera!.rotation.y
 
     //calculate x and z values based on camera direction
-    inputPayload.x = Math.sin(angleYPlayerDeg); 
-    inputPayload.z = (game.camera?.getWorldDirection(new Vector3()).z||0) *-1; //inverted
+    inputPayload.x = Math.sin(angleYPlayerDeg) +inputPayload.x; 
+    inputPayload.z = (game.camera?.getWorldDirection(new Vector3()).z||0) *-1 +inputPayload.z; //inverted
 
     hasInput = true;
   }
@@ -128,8 +131,8 @@ export function getInputPayload(game: Game) {
     let angleYPlayerDeg = game.camera!.rotation.y
 
     //calculate x and z values based on camera direction
-    inputPayload.z = Math.sin(angleYPlayerDeg); 
-    inputPayload.x = (game.camera?.getWorldDirection(new Vector3()).z||0);
+    inputPayload.z = Math.sin(angleYPlayerDeg)+inputPayload.z; 
+    inputPayload.x = (game.camera?.getWorldDirection(new Vector3()).z||0)+inputPayload.x;
 
     hasInput = true;
   }
@@ -138,8 +141,8 @@ export function getInputPayload(game: Game) {
     let angleYPlayerDeg = game.camera!.rotation.y
 
     //calculate x and z values based on camera direction
-    inputPayload.z = Math.sin(angleYPlayerDeg) *-1; //inverted
-    inputPayload.x = (game.camera?.getWorldDirection(new Vector3()).z||0) *-1; //inverted
+    inputPayload.z = Math.sin(angleYPlayerDeg) *-1 +inputPayload.z; //inverted
+    inputPayload.x = (game.camera?.getWorldDirection(new Vector3()).z||0) *-1 +inputPayload.x; //inverted
 
     hasInput = true;
   }
