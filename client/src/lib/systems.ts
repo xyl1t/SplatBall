@@ -53,14 +53,18 @@ export function positionSystem(game: Game) {
         new THREE.Vector3(Position.x[game.playerId], Position.y[game.playerId], Position.z[game.playerId]),
           game.cfg.lerpRatio,
       );
+
+      let mouseSens = game.mouse.sensitivity||0.01; //mouse sensitivity
   
-      game.camera?.rotateOnWorldAxis(new THREE.Vector3(0,1,0),game.mouse.dx*0.01); //0.01 sensitivity
+        console.log(mouseSens)
+
+      game.camera?.rotateOnWorldAxis(new THREE.Vector3(0,1,0),game.mouse.dx*mouseSens); 
   
       let worldDirectionY = game.camera?.getWorldDirection(new THREE.Vector3()).y||0;
   
       //check for y boundaries
-      if((game.mouse.dy>0&&worldDirectionY+game.mouse.dy*0.01<1)||(game.mouse.dy<0&&worldDirectionY+game.mouse.dy*0.01>(-1)))
-        game.camera?.rotateOnAxis(new THREE.Vector3(1,0,0),game.mouse.dy*0.01);
+      if((game.mouse.dy>0&&worldDirectionY+game.mouse.dy*mouseSens<1)||(game.mouse.dy<0&&worldDirectionY+game.mouse.dy*mouseSens>(-1)))
+        game.camera?.rotateOnAxis(new THREE.Vector3(1,0,0),game.mouse.dy*mouseSens);
       
   
       game.mouse.dx = 0;

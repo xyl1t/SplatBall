@@ -70,6 +70,7 @@ export type Game = {
     dy: number;
     left: boolean;
     right: boolean;
+    sensitivity: number;
   };
 
   world: any[];
@@ -157,6 +158,7 @@ const game: Game = {
     dy: 0,
     left: false,
     right: false,
+    sensitivity: 0.01,
   },
 
   world: createWorld(),
