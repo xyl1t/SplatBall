@@ -84,7 +84,7 @@ export type Game = {
     controls?: OrbitControls;
     labelRenderer: CSS2DRenderer;
     propertyChangeListeners: PropertyChangeListener;
-    debugControlsActive: Boolean;
+    debugControlsActive: boolean;
 
     labels: {
       showEids: boolean;

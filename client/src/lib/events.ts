@@ -74,7 +74,6 @@ export default function setupEventListeners(game: Game) {
     game.mouse.y = event.pageY - game.renderer!.domElement.offsetTop;
     game.mouse.left = (event.buttons & 1) == 1;
     game.mouse.right = (event.buttons & 2) == 2;
-    game.cfg.parentDomElement.requestPointerLock();
   }
 
   function handleMouseUp(event: MouseEvent) {
@@ -160,6 +159,9 @@ export function getInputPayload(game: Game) {
   if (game.mouse.left) {
     inputPayload.left = true;
     hasInput = true;
+
+    if(!game.debug.debugControlsActive)
+      game.cfg.parentDomElement.requestPointerLock();
   }
 
   if (game.mouse.right) {

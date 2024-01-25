@@ -30,6 +30,7 @@ export default function setupDebug(game: Game) {
 
   const debugFolder = gui.addFolder("Debug");
   debugFolder.add(game.cfg, "lerpRatio", 0, 1).listen().name("Lerp ratio");
+  debugFolder.add(game.debug, "debugControlsActive").listen().name("Debug camera");
   debugFolder.add(game.debug.axesHelper!, "visible").listen().name("Axes helper");
   debugFolder.add(game.debug.gridHelper!, "visible").listen().name("Grid helper");
 
