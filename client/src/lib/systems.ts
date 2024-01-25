@@ -59,7 +59,7 @@ export function positionSystem(game: Game) {
       let worldDirectionY = game.camera?.getWorldDirection(new THREE.Vector3()).y||0;
   
       //check for y boundaries
-      if((game.mouse.dy>0&&worldDirectionY+game.mouse.dy*0.01<0.95)||(game.mouse.dy<0&&worldDirectionY+game.mouse.dy*0.01>(-0.95)))
+      if((game.mouse.dy>0&&worldDirectionY+game.mouse.dy*0.01<1)||(game.mouse.dy<0&&worldDirectionY+game.mouse.dy*0.01>(-1)))
         game.camera?.rotateOnAxis(new THREE.Vector3(1,0,0),game.mouse.dy*0.01);
       
   
