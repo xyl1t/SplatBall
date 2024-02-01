@@ -10,7 +10,12 @@ import GUI from "three/examples/jsm/libs/lil-gui.module.min.js";
 import Stats from "three/examples/jsm/libs/stats.module.js";
 import PropertyChangeListener from "./listener";
 import { deserialize } from "shared";
-import { getMeEntity, labelSystem, positionSystem, renderSystem } from "./systems";
+import {
+  getMeEntity,
+  labelSystem,
+  positionSystem,
+  renderSystem,
+} from "./systems";
 
 type GameConfig = {
   parentDomElement: HTMLElement;
@@ -111,7 +116,10 @@ export type Game = {
 const game: Game = {
   cfg: {
     parentDomElement: document.body,
-    socketURL: process.env.NODE_ENV === "production" ? undefined : "http://localhost:8080",
+    socketURL:
+      process.env.NODE_ENV === "production"
+        ? undefined
+        : "http://localhost:8080",
     antialias: true,
     fov: 75,
     nearPlane: 0.1,
@@ -258,7 +266,7 @@ const game: Game = {
 
     if (game.debug.enabled) {
       labelSystem(game);
-      if(game.debug.debugControlsActive){
+      if (game.debug.debugControlsActive) {
         game.debug.controls!.enabled = true;
         game.debug.controls!.update();
       }

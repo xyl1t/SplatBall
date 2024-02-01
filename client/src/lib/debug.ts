@@ -26,14 +26,28 @@ export default function setupDebug(game: Game) {
   eventsFolder.add({ b: () => game.joinGame() }, "b").name("Join game");
   eventsFolder.add({ b: () => game.leaveGame() }, "b").name("Leave game");
   eventsFolder.add({ b: () => game.unsubscribe() }, "b").name("Unsubscribe");
-  eventsFolder.add({ b: () => game.socket!.emit("testWall") }, "b").name("Add wall");
+  eventsFolder
+    .add({ b: () => game.socket!.emit("testWall") }, "b")
+    .name("Add wall");
 
   const debugFolder = gui.addFolder("Debug");
   debugFolder.add(game.cfg, "lerpRatio", 0, 1).listen().name("Lerp ratio");
-  debugFolder.add(game.mouse, "sensitivity", 0.001, 0.05,0.001).listen().name("Mouse sensitivity");
-  debugFolder.add(game.debug, "debugControlsActive").listen().name("Debug camera");
-  debugFolder.add(game.debug.axesHelper!, "visible").listen().name("Axes helper");
-  debugFolder.add(game.debug.gridHelper!, "visible").listen().name("Grid helper");
+  debugFolder
+    .add(game.mouse, "sensitivity", 0.001, 0.05, 0.001)
+    .listen()
+    .name("Mouse sensitivity");
+  debugFolder
+    .add(game.debug, "debugControlsActive")
+    .listen()
+    .name("Debug camera");
+  debugFolder
+    .add(game.debug.axesHelper!, "visible")
+    .listen()
+    .name("Axes helper");
+  debugFolder
+    .add(game.debug.gridHelper!, "visible")
+    .listen()
+    .name("Grid helper");
 
   const labelFolder = debugFolder.addFolder("Label");
   labelFolder.add(game.debug.labels, "showEids").name("Show eid's");

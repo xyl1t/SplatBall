@@ -76,7 +76,7 @@ const log = (type: string, color: string, ...message: string[]) => {
   );
 };
 
-const logger: { [key:string]: any } = {
+const logger: { [key: string]: any } = {
   addType: (type: string, color: string) => {
     logger[type] = (...message: string[]) => {
       log(type, color, ...message);

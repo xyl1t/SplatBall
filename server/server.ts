@@ -104,7 +104,6 @@ const wallids: number[] = [];
 
 // NOTE: Creates a simple wall of boxes for testing
 function addTestWall(width: number) {
-
   wallids.forEach((eid) => {
     removeEntity(world, eid);
   });
@@ -289,13 +288,15 @@ setInterval(() => {
       });
 
       if (hasComponent(world, Box, eid)) {
-        body.addShape(new CANNON.Box(
-          new CANNON.Vec3(
-            Box.width[eid]! / 2,
-            Box.height[eid]! / 2,
-            Box.depth[eid]! / 2,
+        body.addShape(
+          new CANNON.Box(
+            new CANNON.Vec3(
+              Box.width[eid]! / 2,
+              Box.height[eid]! / 2,
+              Box.depth[eid]! / 2,
+            ),
           ),
-        ));
+        );
       } else if (hasComponent(world, Sphere, eid)) {
         body.addShape(new CANNON.Sphere(Sphere.radius[eid]!));
       }
