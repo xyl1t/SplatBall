@@ -11,7 +11,7 @@ import Stats from "three/examples/jsm/libs/stats.module.js";
 import PropertyChangeListener from "./listener";
 import { deserialize } from "shared";
 import {
-  getMeEntity,
+  colorSystem, getMeEntity,
   labelSystem,
   positionSystem,
   renderSystem,
@@ -204,6 +204,18 @@ const game: Game = {
     setupSocketIO(game);
     setupDebug(game);
 
+    // const points = [];
+    // points.push( new THREE.Vector3( - 1, -1, -10 ) );
+    // points.push( new THREE.Vector3( -1, 1, -10 ) );
+    // points.push( new THREE.Vector3( 1, 1, -10 ) );
+    // points.push( new THREE.Vector3( 1, -1, -10 ) );
+
+    // const material = new THREE.LineBasicMaterial( { color: 0x0000ff } );
+    // const geometry = new THREE.BufferGeometry().setFromPoints( points );
+    // const line = new THREE.Line( geometry, material );
+
+    // game.camera!.add(line)
+
     game.isSetup = true;
     game.subscribe();
   },
@@ -263,6 +275,7 @@ const game: Game = {
 
   update() {
     positionSystem(game);
+    colorSystem(game);
 
     if (game.debug.enabled) {
       labelSystem(game);

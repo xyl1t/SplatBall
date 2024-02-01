@@ -24,6 +24,8 @@ export function getMeEntity(world: any[]) {
 }
 
 const queryPositionQuaternion = defineQuery([Position, Quaternion]);
+const queryColor = defineQuery([Color]); //testing
+
 
 const queryBox = defineQuery([Box]);
 const queryBoxEnter = enterQuery(queryBox);
@@ -32,6 +34,15 @@ const queryBoxExit = exitQuery(queryBox);
 const querySphere = defineQuery([Sphere]);
 const querySphereEnter = enterQuery(querySphere);
 const querySphereExit = exitQuery(querySphere);
+
+export function colorSystem(game: Game){
+  const ids = queryColor(game.world);
+  ids.forEach((eid) => {
+
+    const obj:any = game.scene!.getObjectByName(eid.toString());
+    obj?.material!.color.setHex(Color.value[eid])    
+  });
+}
 
 export function positionSystem(game: Game) {
   const ids = queryPositionQuaternion(game.world);
@@ -54,6 +65,7 @@ export function positionSystem(game: Game) {
       new THREE.Vector3(Position.x[eid], Position.y[eid], Position.z[eid]),
       game.cfg.lerpRatio,
     );
+      
   });
 
   if (!game.debug.debugControlsActive) {
@@ -102,6 +114,36 @@ export function positionSystem(game: Game) {
       );
     }
   }
+}
+
+export function getCameraDirection(game: Game) {
+
+  let raycaster = new THREE.Raycaster();
+
+  let normalX = ((window.innerWidth/2) / window.innerWidth) * 2 - 1;
+  let normalY = ((window.innerHeight/2) / window.innerHeight) * 2 - 1;
+
+  normalY*=-1
+  normalX*=-1
+  raycaster.setFromCamera(new THREE.Vector2(normalX, normalY),game.camera!);
+
+  // const points = [];
+
+  // let origin = new THREE.Vector3(raycaster.ray.origin.x,raycaster.ray.origin.y,raycaster.ray.origin.z) 
+  // let direction = new THREE.Vector3(raycaster.ray.direction.x,raycaster.ray.direction.y,raycaster.ray.direction.z) 
+  // let target = origin.add(direction.multiplyScalar(3))
+  
+  // points.push(raycaster.ray.origin);
+  // points.push(target)
+
+  // const material = new THREE.LineBasicMaterial( { color: 0x0000ff } );
+  // const geometry = new THREE.BufferGeometry().setFromPoints( points );
+  // const line = new THREE.Line( geometry, material );
+
+  // game.scene!.add(line)
+
+
+  return raycaster.ray.direction;
 }
 
 export function renderSystem(game: Game) {

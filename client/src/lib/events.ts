@@ -1,5 +1,7 @@
 import { Vector3 } from "three";
 import { Game } from "./game";
+import { getCameraDirection } from "./systems";
+import { Player } from "shared";
 
 export default function setupEventListeners(game: Game) {
   if (!game.renderer) {
@@ -105,6 +107,8 @@ export function getInputPayload(game: Game) {
   const inputPayload = {
     x: 0,
     z: 0,
+    E: false,
+    targetDirection: new Vector3,
     shift: false,
     space: false,
     left: game.mouse.left,
@@ -170,6 +174,11 @@ export function getInputPayload(game: Game) {
     hasInput = true;
   }
 
+  if (game.keyboard.e) {
+    inputPayload.E = true;
+    hasInput = true;
+  }
+
   if (game.mouse.left) {
     inputPayload.left = true;
     hasInput = true;
@@ -187,6 +196,10 @@ export function getInputPayload(game: Game) {
   if (game.mouse.right) {
     inputPayload.right = true;
     hasInput = true;
+  }
+
+  if(hasInput){
+    inputPayload.targetDirection = getCameraDirection(game);
   }
 
   return hasInput ? inputPayload : undefined;
