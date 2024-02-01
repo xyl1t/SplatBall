@@ -56,8 +56,6 @@ export function positionSystem(game: Game) {
 
       let mouseSens = game.mouse.sensitivity||0.01; //mouse sensitivity
   
-        console.log(mouseSens)
-
       game.camera?.rotateOnWorldAxis(new THREE.Vector3(0,1,0),game.mouse.dx*mouseSens); 
   
       let worldDirectionY = game.camera?.getWorldDirection(new THREE.Vector3()).y||0;
