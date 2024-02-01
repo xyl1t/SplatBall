@@ -258,8 +258,10 @@ const game: Game = {
 
     if (game.debug.enabled) {
       labelSystem(game);
-      if(game.debug.debugControlsActive)
+      if(game.debug.debugControlsActive){
+        game.debug.controls!.enabled = true;
         game.debug.controls!.update();
+      }
       game.debug.stats.update();
     }
 

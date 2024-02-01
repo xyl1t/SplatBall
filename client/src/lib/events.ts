@@ -20,6 +20,7 @@ export default function setupEventListeners(game: Game) {
   window.addEventListener("mousedown", handleMouseDown, false);
   window.addEventListener("mouseup", handleMouseUp, false);
   window.addEventListener("mouseleave", handleMouseLeave, false);
+  document.addEventListener("pointerlockchange", handlePointerLockChange, false);
 
 
   function handleWindowResize(_event: UIEvent) {
@@ -27,6 +28,11 @@ export default function setupEventListeners(game: Game) {
     game.camera!.updateProjectionMatrix();
     game.renderer!.setSize(window.innerWidth, window.innerHeight);
     game.debug.labelRenderer!.setSize(window.innerWidth, window.innerHeight);
+  }
+
+  //delay for pointer lock, to prevent errors
+  function handlePointerLockChange(_event: any){
+    lastPointerLockChange = Date.now()
   }
 
   function handleKeyDown(event: KeyboardEvent) {
@@ -91,6 +97,7 @@ export default function setupEventListeners(game: Game) {
   }
 }
 
+let lastPointerLockChange = Date.now();
 export function getInputPayload(game: Game) {
   const inputPayload = {
     x: 0,
@@ -160,8 +167,14 @@ export function getInputPayload(game: Game) {
     inputPayload.left = true;
     hasInput = true;
 
-    if(!game.debug.debugControlsActive)
+    if(!game.debug.debugControlsActive && !document.pointerLockElement && lastPointerLockChange+1300<Date.now()){
       game.cfg.parentDomElement.requestPointerLock();
+      game.debug.controls!.enabled = false;
+    }
+
+
+      
+
   }
 
   if (game.mouse.right) {
