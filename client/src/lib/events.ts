@@ -1,3 +1,4 @@
+import { Vector3 } from "three";
 import { Game } from "./game";
 
 export default function setupEventListeners(game: Game) {
@@ -19,12 +20,22 @@ export default function setupEventListeners(game: Game) {
   window.addEventListener("mousedown", handleMouseDown, false);
   window.addEventListener("mouseup", handleMouseUp, false);
   window.addEventListener("mouseleave", handleMouseLeave, false);
+  document.addEventListener(
+    "pointerlockchange",
+    handlePointerLockChange,
+    false,
+  );
 
   function handleWindowResize(_event: UIEvent) {
     game.camera!.aspect = window.innerWidth / window.innerHeight;
     game.camera!.updateProjectionMatrix();
     game.renderer!.setSize(window.innerWidth, window.innerHeight);
     game.debug.labelRenderer!.setSize(window.innerWidth, window.innerHeight);
+  }
+
+  //delay for pointer lock, to prevent errors
+  function handlePointerLockChange(_event: any) {
+    lastPointerLockChange = Date.now();
   }
 
   function handleKeyDown(event: KeyboardEvent) {
@@ -61,6 +72,8 @@ export default function setupEventListeners(game: Game) {
   function handleMouseMove(event: MouseEvent) {
     game.mouse.x = event.pageX - game.renderer!.domElement.offsetLeft;
     game.mouse.y = event.pageY - game.renderer!.domElement.offsetTop;
+    game.mouse.dx = document.pointerLockElement ? event.movementX * -1 : 0; //inverted mouse-delta, only if pointer is locked
+    game.mouse.dy = document.pointerLockElement ? event.movementY * -1 : 0;
     game.mouse.left = (event.buttons & 1) == 1;
     game.mouse.right = (event.buttons & 2) == 2;
   }
@@ -87,6 +100,7 @@ export default function setupEventListeners(game: Game) {
   }
 }
 
+let lastPointerLockChange = Date.now();
 export function getInputPayload(game: Game) {
   const inputPayload = {
     x: 0,
@@ -100,22 +114,49 @@ export function getInputPayload(game: Game) {
   let hasInput = false;
 
   if (game.keyboard.w || game.keyboard.arrowup) {
-    inputPayload.x = 1;
+    let angleYPlayerDeg = game.camera!.rotation.y;
+    //calculate x and z values based on camera direction
+    inputPayload.x = Math.sin(angleYPlayerDeg) * -1; //inverted
+    inputPayload.z = game.camera?.getWorldDirection(new Vector3()).z || 0;
+
     hasInput = true;
   }
 
+  //all following events have to add up the input payload of the events before, so that for example
+  //pressing 'w' and 's' at the same time resolves in no movement.
+
   if (game.keyboard.s || game.keyboard.arrowdown) {
-    inputPayload.x = -1;
+    let angleYPlayerDeg = game.camera!.rotation.y;
+
+    //calculate x and z values based on camera direction
+    inputPayload.x = Math.sin(angleYPlayerDeg) + inputPayload.x;
+    inputPayload.z =
+      (game.camera?.getWorldDirection(new Vector3()).z || 0) * -1 +
+      inputPayload.z; //inverted
+
     hasInput = true;
   }
 
   if (game.keyboard.a || game.keyboard.arrowleft) {
-    inputPayload.z = -1;
+    let angleYPlayerDeg = game.camera!.rotation.y;
+
+    //calculate x and z values based on camera direction
+    inputPayload.z = Math.sin(angleYPlayerDeg) + inputPayload.z;
+    inputPayload.x =
+      (game.camera?.getWorldDirection(new Vector3()).z || 0) + inputPayload.x;
+
     hasInput = true;
   }
 
   if (game.keyboard.d || game.keyboard.arrowright) {
-    inputPayload.z = 1;
+    let angleYPlayerDeg = game.camera!.rotation.y;
+
+    //calculate x and z values based on camera direction
+    inputPayload.z = Math.sin(angleYPlayerDeg) * -1 + inputPayload.z; //inverted
+    inputPayload.x =
+      (game.camera?.getWorldDirection(new Vector3()).z || 0) * -1 +
+      inputPayload.x; //inverted
+
     hasInput = true;
   }
 
@@ -132,6 +173,15 @@ export function getInputPayload(game: Game) {
   if (game.mouse.left) {
     inputPayload.left = true;
     hasInput = true;
+
+    if (
+      !game.debug.debugControlsActive &&
+      !document.pointerLockElement &&
+      lastPointerLockChange + 1300 < Date.now()
+    ) {
+      game.cfg.parentDomElement.requestPointerLock();
+      game.debug.controls!.enabled = false;
+    }
   }
 
   if (game.mouse.right) {
@@ -141,4 +191,3 @@ export function getInputPayload(game: Game) {
 
   return hasInput ? inputPayload : undefined;
 }
-

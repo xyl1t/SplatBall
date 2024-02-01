@@ -10,7 +10,12 @@ import GUI from "three/examples/jsm/libs/lil-gui.module.min.js";
 import Stats from "three/examples/jsm/libs/stats.module.js";
 import PropertyChangeListener from "./listener";
 import { deserialize } from "shared";
-import { getMeEntity, labelSystem, positionSystem, renderSystem } from "./systems";
+import {
+  getMeEntity,
+  labelSystem,
+  positionSystem,
+  renderSystem,
+} from "./systems";
 
 type GameConfig = {
   parentDomElement: HTMLElement;
@@ -66,8 +71,11 @@ export type Game = {
   mouse: {
     x: number;
     y: number;
+    dx: number;
+    dy: number;
     left: boolean;
     right: boolean;
+    sensitivity: number;
   };
 
   world: any[];
@@ -82,6 +90,7 @@ export type Game = {
     controls?: OrbitControls;
     labelRenderer: CSS2DRenderer;
     propertyChangeListeners: PropertyChangeListener;
+    debugControlsActive: boolean;
 
     labels: {
       showEids: boolean;
@@ -107,7 +116,10 @@ export type Game = {
 const game: Game = {
   cfg: {
     parentDomElement: document.body,
-    socketURL: process.env.NODE_ENV === "production" ? undefined : "http://localhost:8080",
+    socketURL:
+      process.env.NODE_ENV === "production"
+        ? undefined
+        : "http://localhost:8080",
     antialias: true,
     fov: 75,
     nearPlane: 0.1,
@@ -150,8 +162,11 @@ const game: Game = {
   mouse: {
     x: 0,
     y: 0,
+    dx: 0,
+    dy: 0,
     left: false,
     right: false,
+    sensitivity: 0.01,
   },
 
   world: createWorld(),
@@ -166,6 +181,7 @@ const game: Game = {
     controls: undefined,
     labelRenderer: new CSS2DRenderer(),
     propertyChangeListeners: new PropertyChangeListener(),
+    debugControlsActive: false,
 
     labels: {
       showEids: true,
@@ -232,6 +248,7 @@ const game: Game = {
     console.log("leave");
     if (!game.socket) throw new Error("Socket not initialized");
     game.socket.emit("leave");
+    game.playerId = -1;
   },
 
   gameLoop(_currentTime: number = 0) {
@@ -249,7 +266,10 @@ const game: Game = {
 
     if (game.debug.enabled) {
       labelSystem(game);
-      game.debug.controls!.update();
+      if (game.debug.debugControlsActive) {
+        game.debug.controls!.enabled = true;
+        game.debug.controls!.update();
+      }
       game.debug.stats.update();
     }
 

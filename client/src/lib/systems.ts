@@ -1,5 +1,18 @@
-import { defineQuery, enterQuery, exitQuery, getEntityComponents } from "bitecs";
-import { Box, Color, Me, Position, Quaternion, Sphere, componentNames } from "shared";
+import {
+  defineQuery,
+  enterQuery,
+  exitQuery,
+  getEntityComponents,
+} from "bitecs";
+import {
+  Box,
+  Color,
+  Me,
+  Position,
+  Quaternion,
+  Sphere,
+  componentNames,
+} from "shared";
 import { Game } from "./game";
 import * as THREE from "three";
 import { CSS2DObject } from "three/examples/jsm/Addons.js";
@@ -36,11 +49,59 @@ export function positionSystem(game: Game) {
       ),
       game.cfg.lerpRatio,
     );
+
     obj?.position.lerp(
       new THREE.Vector3(Position.x[eid], Position.y[eid], Position.z[eid]),
       game.cfg.lerpRatio,
     );
   });
+
+  if (!game.debug.debugControlsActive) {
+    //enable camera movement, if player spawns
+    if (game.playerId != -1) {
+      game.camera?.position.lerp(
+        new THREE.Vector3(
+          Position.x[game.playerId],
+          Position.y[game.playerId],
+          Position.z[game.playerId],
+        ),
+        game.cfg.lerpRatio,
+      );
+
+      let mouseSens = game.mouse.sensitivity || 0.01; //mouse sensitivity
+
+      game.camera?.rotateOnWorldAxis(
+        new THREE.Vector3(0, 1, 0),
+        game.mouse.dx * mouseSens,
+      );
+
+      let worldDirectionY =
+        game.camera?.getWorldDirection(new THREE.Vector3()).y || 0;
+
+      //check for y boundaries
+      if (
+        (game.mouse.dy > 0 &&
+          worldDirectionY + game.mouse.dy * mouseSens < 1) ||
+        (game.mouse.dy < 0 && worldDirectionY + game.mouse.dy * mouseSens > -1)
+      )
+        game.camera?.rotateOnAxis(
+          new THREE.Vector3(1, 0, 0),
+          game.mouse.dy * mouseSens,
+        );
+
+      game.mouse.dx = 0;
+      game.mouse.dy = 0;
+    } else {
+      game.camera?.position.lerp(
+        new THREE.Vector3(
+          game.cfg.initialCameraPosition.x,
+          game.cfg.initialCameraPosition.y,
+          game.cfg.initialCameraPosition.z,
+        ),
+        game.cfg.lerpRatio,
+      );
+    }
+  }
 }
 
 export function renderSystem(game: Game) {
@@ -55,7 +116,6 @@ export function renderSystem(game: Game) {
     label.center.set(0, 0);
     label.layers.set(1);
     mesh.add(label);
-
   };
 
   // ENTERED
@@ -126,7 +186,9 @@ export function renderSystem(game: Game) {
 
 export function labelSystem(game: Game) {
   queryPositionQuaternion(game.world).forEach((eid) => {
-    const label = game.scene!.getObjectByName(eid.toString())?.getObjectByName("label") as CSS2DObject;
+    const label = game
+      .scene!.getObjectByName(eid.toString())
+      ?.getObjectByName("label") as CSS2DObject;
     if (!label) return;
 
     let textContent = "";

@@ -1,5 +1,5 @@
 type GenericObject = {
-  [index: string]: any
+  [index: string]: any;
 };
 
 export default class PropertyChangeListener {
@@ -9,7 +9,6 @@ export default class PropertyChangeListener {
   constructor() {
     this.loopId = requestAnimationFrame(this.listenUpdate.bind(this));
     console.log(this.listeners);
-    
   }
 
   listenUpdate() {
@@ -28,12 +27,16 @@ export default class PropertyChangeListener {
     window.cancelAnimationFrame(this.loopId);
   }
 
-  addListener(obj: GenericObject, value: string, callback: (data: any) => void): void {
+  addListener(
+    obj: GenericObject,
+    value: string,
+    callback: (data: any) => void,
+  ): void {
     this.listeners.push({
       obj,
       value,
       prevValue: obj[value],
-      callback
+      callback,
     });
   }
 }
