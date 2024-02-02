@@ -95,6 +95,7 @@ physicsWorld.addContactMaterial(slippery_ground);
 
 // Stores the physics body for each entity that has a Box component
 const entityPhysicsBodyMap = new Map();
+const bodyToEntityMap = new Map();
 
 const world = createWorld();
 // const _NULL_ENTITY = addEntity(world);
@@ -473,9 +474,47 @@ setInterval(() => {
         });
       }
 
+
+      if (hasComponent(world, Ball, eid)) {
+
+        
+        body.addEventListener("collide", (event: any) => {
+          const { contact } = event
+          console.log("hit")
+
+
+          // contact.bi and contact.bj are the colliding bodies, and contact.ni is the collision normal.
+          // We do not yet know which one is which! Let's check.
+          if (contact.bi.id != body.id) {
+            // bi is the player body, flip the contact normal
+            let collObj = bodyToEntityMap.get(contact.bi.id)
+
+            if(!hasComponent(world,Player,collObj)){
+              console.log("no player")
+            }else{
+              let v = new CANNON.Vec3().copy(contact.ni);
+              v.negate()
+              entityPhysicsBodyMap.get(collObj).applyForce(v.vmul(new CANNON.Vec3(20000,20000,20000)))
+            }
+          }else{
+            let collObj = bodyToEntityMap.get(contact.bj.id)
+            if(!hasComponent(world,Player,collObj)){
+              console.log("no player")
+            }else{
+              console.log("player" + collObj)
+              let v = new CANNON.Vec3().copy(contact.ni);
+              v.negate()
+              entityPhysicsBodyMap.get(collObj).applyForce(v.vmul(new CANNON.Vec3(20000,20000,20000)))
+
+            }
+          }
+        });
+      }
+
       physicsWorld.addBody(body);
 
       entityPhysicsBodyMap.set(eid, body);
+      bodyToEntityMap.set(body.id, eid);
     });
 
     // Remove entities from physics world
@@ -484,6 +523,7 @@ setInterval(() => {
       if (body) {
         physicsWorld.removeBody(body);
         entityPhysicsBodyMap.delete(eid);
+        bodyToEntityMap.delete(body.id);
       }
     });
 
