@@ -50,13 +50,13 @@ const queryPhysicsBody = defineQuery([PhysicsBody]);
 const queryPhysicsBodyEnter = enterQuery(queryPhysicsBody);
 const queryPhysicsBodyExit = exitQuery(queryPhysicsBody);
 
-export function colorSystem(game: Game){
-  const ids = queryColor(game.world);
-  ids.forEach((eid) => {
-
-    const obj:any = game.scene!.getObjectByName(eid.toString());
-    obj?.material!.color.setHex(Color.value[eid])    
-  });
+export function colorSystem(_game: Game){
+  // const ids = queryColor(game.world);
+  // ids.forEach((eid) => {
+  //
+  //   const obj:any = game.scene!.getObjectByName(eid.toString());
+  //   obj?.material!.color.setHex(Color.value[eid])    
+  // });
 }
 
 export function positionSystem(game: Game) {

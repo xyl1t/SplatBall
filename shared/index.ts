@@ -9,6 +9,7 @@ export const Me = defineComponent(); // defines the playing entity (the player)
 
 export const Player = defineComponent({
   canJump: Types.i8,
+  numBalls: Types.ui8,
 }); // defines the player entity
 
 export const Position = defineComponent({
@@ -49,10 +50,6 @@ export const Ball = defineComponent({
   touchedFloor: Types.ui8,
 });
 
-export const Player = defineComponent({
-  numBalls: Types.ui8,
-});
-
 export const InitialForce = defineComponent({
   x: Types.f32,
   y: Types.f32,
@@ -80,11 +77,10 @@ componentNames.set(Position, varToString({ Position }));
 componentNames.set(Quaternion, varToString({ Quaternion }));
 componentNames.set(Box, varToString({ Box }));
 componentNames.set(Cylinder, varToString({ Cylinder }));
-componentNames.set(Sphere, varToString({ Box }));
-componentNames.set(Ball, varToString({ Box }));
-componentNames.set(Player, varToString({ Box }));
-componentNames.set(InitialForce, varToString({ Box }));
-componentNames.set(PhysicsBody, varToString({ Box }));
+componentNames.set(Sphere, varToString({ Sphere }));
+componentNames.set(Ball, varToString({ Ball }));
+componentNames.set(InitialForce, varToString({ InitialForce }));
+componentNames.set(PhysicsBody, varToString({ PhysicsBody }));
 componentNames.set(Color, varToString({ Color }));
 componentNames.set(DisplayCollider, varToString({ DisplayCollider }));
 componentNames.set(Model, varToString({ Model }));
