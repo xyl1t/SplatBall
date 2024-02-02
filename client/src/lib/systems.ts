@@ -5,6 +5,7 @@ import {
   getEntityComponents,
 } from "bitecs";
 import {
+  Ball,
   Box,
   Color,
   Me,
@@ -25,7 +26,7 @@ export function getMeEntity(world: any[]) {
 
 const queryPositionQuaternion = defineQuery([Position, Quaternion]);
 const queryColor = defineQuery([Color]); //testing
-
+const queryBall = defineQuery([Ball]);
 
 const queryBox = defineQuery([Box]);
 const queryBoxEnter = enterQuery(queryBox);
@@ -142,11 +143,39 @@ export function getCameraDirection(game: Game) {
 
   // game.scene!.add(line)
 
+  //add outline on hover
+  const ids = queryBall(game.world);
+  let balls = game.scene?.children.filter(ch=>ids.indexOf(parseInt(ch.name))!=-1)
+  let result;
+  if(balls)
+    result = raycaster.intersectObjects(balls)
+
+  game.outlineScene?.clear()
+  for(let res of result||[]){
+    let outlineObj = res.object.clone()
+    outlineObj.scale.set(1.2,1.2,1.2)
+    game.outlineScene?.add(outlineObj)
+  }
 
   return raycaster.ray.direction;
 }
 
 export function renderSystem(game: Game) {
+
+  // const points = [];
+  // points.push( new THREE.Vector3( -1, -1, - 1 ) );
+  // points.push( new THREE.Vector3( -1, 1, -1 ) );
+  // points.push( new THREE.Vector3( -1, 1, 1 ) );
+  // points.push( new THREE.Vector3( -1, -1, 1 ) );
+
+  // const material = new THREE.LineBasicMaterial( { color: 0x0000ff } );
+  // const geometry = new THREE.BufferGeometry().setFromPoints( points );
+  // const line = new THREE.Line( geometry, material );
+
+
+  // game.camera!.add(line)
+
+
   const addLabelToMesh = (mesh: THREE.Object3D, text: string) => {
     const labelDiv = document.createElement("iv");
     labelDiv.className =

@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import setupThree from "./three";
-import { CSS2DRenderer, OrbitControls } from "three/examples/jsm/Addons.js";
+import { CSS2DRenderer, OrbitControls, OutlineEffect } from "three/examples/jsm/Addons.js";
 import setupEventListeners, { getInputPayload } from "./events";
 import { Socket } from "socket.io-client";
 import setupSocketIO from "./socket";
@@ -63,6 +63,9 @@ export type Game = {
   renderer?: THREE.WebGLRenderer;
   scene?: THREE.Scene;
   camera?: THREE.PerspectiveCamera;
+
+  outlineScene?: THREE.Scene;
+  outlineRenderer?: OutlineEffect;
 
   socket?: Socket;
 
@@ -216,6 +219,15 @@ const game: Game = {
 
     // game.camera!.add(line)
 
+    var reticle = new THREE.Mesh(
+      new THREE.RingGeometry( 0.85 * 500, 500, 32),
+      new THREE.MeshBasicMaterial( {color: 0xffffff, blending: THREE.AdditiveBlending, side: THREE.DoubleSide })
+    );
+    reticle.position.z = -1 * 1;
+    reticle.lookAt(game.camera!.position)
+    game.camera!.add(reticle);
+    console.log(game.camera)
+
     game.isSetup = true;
     game.subscribe();
   },
@@ -295,12 +307,12 @@ const game: Game = {
 
     //...
   },
-
+  
   render() {
     renderSystem(game);
-
     game.renderer!.render(game.scene!, game.camera!);
-    // if (game.debug.enabled) {
+    game.outlineRenderer?.renderOutline(game.outlineScene!, game.camera!)
+        // if (game.debug.enabled) {
     game.debug.labelRenderer.render(game.scene!, game.camera!);
     // }
   },

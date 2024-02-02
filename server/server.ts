@@ -54,6 +54,8 @@ const subscribedSockets = new Set<Socket>();
 const inGameSockets = new Set<Socket>(); // NOTE: actually in game players, but stored as sockets (sockets also have an entity id property)
 const inGameEntities = new Set<number>();
 
+const cameraOffsetY = 0.8;
+
 const game = {
   config: {
     tickRate: 30,
@@ -161,7 +163,7 @@ function spawnBall(){
   Quaternion.w[eid] = 1;
 
   addComponent(world, Sphere, eid);
-  Sphere.radius[eid] = 0.4;
+  Sphere.radius[eid] = 0.3;
 
   addComponent(world, Color, eid);
   Color.value[eid] = 0xb09707;
@@ -193,7 +195,7 @@ function shootBall(origin:CANNON.Vec3, direction:CANNON.Vec3, speed:number){
   Quaternion.w[eid] = 1;
 
   addComponent(world, Sphere, eid);
-  Sphere.radius[eid] = 0.4;
+  Sphere.radius[eid] = 0.3;
 
   addComponent(world, Color, eid);
   Color.value[eid] = 0xb09707;
@@ -448,7 +450,7 @@ setInterval(() => {
       //cast ray for pickup
       if(socket.data.input.E){
         let rayResult: CANNON.RaycastResult = new CANNON.RaycastResult();
-        let rayOrigin = new CANNON.Vec3(Position.x[socket.data.eid],Position.y[socket.data.eid],Position.z[socket.data.eid]);
+        let rayOrigin = new CANNON.Vec3(Position.x[socket.data.eid],Position.y[socket.data.eid]!+cameraOffsetY,Position.z[socket.data.eid]);
         let rayDirection = new CANNON.Vec3(socket.data.input.targetDirection.x, socket.data.input.targetDirection.y, socket.data.input.targetDirection.z)
         
         rayDirection.normalize()
@@ -469,7 +471,7 @@ setInterval(() => {
       //shoot ball
       if(socket.data.input.left){
         if(Player.numBalls[socket.data?.eid!]!>0){
-          let ballOrigin = new CANNON.Vec3(Position.x[socket.data.eid],Position.y[socket.data.eid],Position.z[socket.data.eid]);
+          let ballOrigin = new CANNON.Vec3(Position.x[socket.data.eid],Position.y[socket.data.eid]!+cameraOffsetY,Position.z[socket.data.eid]);
           let ballDirection = new CANNON.Vec3(socket.data.input.targetDirection.x, socket.data.input.targetDirection.y, socket.data.input.targetDirection.z)
           ballDirection.normalize()
           shootBall(ballOrigin.vadd(ballDirection.vmul(new CANNON.Vec3(1.1,1.1,1.1))), ballDirection,4000)

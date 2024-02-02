@@ -1,7 +1,6 @@
 import { Vector3 } from "three";
 import { Game } from "./game";
 import { getCameraDirection } from "./systems";
-import { Player } from "shared";
 
 export default function setupEventListeners(game: Game) {
   if (!game.renderer) {
@@ -198,9 +197,8 @@ export function getInputPayload(game: Game) {
     hasInput = true;
   }
 
-  if(hasInput){
-    inputPayload.targetDirection = getCameraDirection(game);
-  }
+  inputPayload.targetDirection = getCameraDirection(game);
+  
 
   return hasInput ? inputPayload : undefined;
 }
