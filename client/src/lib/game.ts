@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import setupThree from "./three";
-import { CSS2DRenderer, OrbitControls } from "three/examples/jsm/Addons.js";
+import { CSS2DRenderer, OrbitControls, OutlineEffect } from "three/examples/jsm/Addons.js";
 import setupEventListeners, { getInputPayload } from "./events";
 import { Socket } from "socket.io-client";
 import setupSocketIO from "./socket";
@@ -11,7 +11,7 @@ import Stats from "three/examples/jsm/libs/stats.module.js";
 import PropertyChangeListener from "./listener";
 import { deserialize } from "shared";
 import {
-  getMeEntity,
+  colorSystem, getMeEntity,
   labelSystem,
   positionSystem,
   renderSystem,
@@ -64,6 +64,9 @@ export type Game = {
   renderer?: THREE.WebGLRenderer;
   scene?: THREE.Scene;
   camera?: THREE.PerspectiveCamera;
+
+  outlineScene?: THREE.Scene;
+  outlineRenderer?: OutlineEffect;
 
   socket?: Socket;
 
@@ -272,6 +275,7 @@ const game: Game = {
 
   update() {
     positionSystem(game);
+    colorSystem(game);
 
     if (game.debug.enabled) {
       labelSystem(game);
@@ -291,12 +295,12 @@ const game: Game = {
 
     //...
   },
-
+  
   render() {
     renderSystem(game);
-
     game.renderer!.render(game.scene!, game.camera!);
-    // if (game.debug.enabled) {
+    game.outlineRenderer?.renderOutline(game.outlineScene!, game.camera!)
+        // if (game.debug.enabled) {
     game.debug.labelRenderer.render(game.scene!, game.camera!);
     // }
   },

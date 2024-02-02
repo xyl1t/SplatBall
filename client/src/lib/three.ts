@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { Game } from "./game";
+import { OutlineEffect } from "three/examples/jsm/Addons.js";
 
 export default function setupThree(game: Game) {
   game.renderer = setupRenderer(game.cfg.antialias);
@@ -8,6 +9,11 @@ export default function setupThree(game: Game) {
   game.scene = new THREE.Scene();
   game.camera = setupCamera(game);
   setupBasicScene(game);
+
+  const outlineRenderer = new OutlineEffect(game.renderer);
+  game.outlineRenderer = outlineRenderer;
+  game.outlineScene = new THREE.Scene();
+  game.outlineRenderer.autoClear = true;
 }
 
 export function setupRenderer(antialias: boolean): THREE.WebGLRenderer {

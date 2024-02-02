@@ -19,10 +19,12 @@ import {
 } from "bitecs";
 import logger, { colors, green, red } from "./utils/logger.js";
 import {
+  Ball,
   Box,
   Color,
   Cylinder,
   DisplayCollider,
+  InitialForce,
   Me,
   Model,
   PhysicsBody,
@@ -53,6 +55,8 @@ const connectedSockets: Socket[] = [];
 const subscribedSockets = new Set<Socket>();
 const inGameSockets = new Set<Socket>(); // NOTE: actually in game players, but stored as sockets (sockets also have an entity id property)
 const inGameEntities = new Set<number>();
+
+const cameraOffsetY = 0.8;
 
 const game = {
   config: {
@@ -93,7 +97,7 @@ physicsWorld.addContactMaterial(slippery_ground);
 const entityPhysicsBodyMap = new Map();
 
 const world = createWorld();
-const _NULL_ENTITY = addEntity(world);
+// const _NULL_ENTITY = addEntity(world);
 
 const queryPhysicsBody = defineQuery([PhysicsBody]);
 const queryPhysicsBodyEnter = enterQuery(queryPhysicsBody);
@@ -165,6 +169,79 @@ function addTestWall(width: number) {
     width -= 1;
   }
 }
+
+let ballId;
+
+function spawnBall(){
+  ballId = addEntity(world);
+  let eid = ballId;
+
+  addComponent(world, Position, eid);
+  Position.x[eid] = 0;
+  Position.y[eid] = 2;
+  Position.z[eid] = 3;
+
+  addComponent(world, Quaternion, eid);
+  Quaternion.x[eid] = 0;
+  Quaternion.y[eid] = 0;
+  Quaternion.z[eid] = 0;
+  Quaternion.w[eid] = 1;
+
+  addComponent(world, Sphere, eid);
+  Sphere.radius[eid] = 0.3;
+
+  addComponent(world, Color, eid);
+  Color.value[eid] = 0xb09707;
+
+  addComponent(world, PhysicsBody, eid);
+  PhysicsBody.mass[eid] = 5;
+
+  addComponent(world, Ball, eid);
+  Ball.touchedFloor[eid] = 1;
+
+}
+
+spawnBall();
+
+function shootBall(origin:CANNON.Vec3, direction:CANNON.Vec3, speed:number){
+
+  ballId = addEntity(world);
+  let eid = ballId;
+
+  addComponent(world, Position, eid);
+  Position.x[eid] = origin.x;
+  Position.y[eid] = origin.y;
+  Position.z[eid] = origin.z;
+
+  addComponent(world, Quaternion, eid);
+  Quaternion.x[eid] = 0;
+  Quaternion.y[eid] = 0;
+  Quaternion.z[eid] = 0;
+  Quaternion.w[eid] = 1;
+
+  addComponent(world, Sphere, eid);
+  Sphere.radius[eid] = 0.3;
+
+  addComponent(world, Color, eid);
+  Color.value[eid] = 0xb09707;
+
+  addComponent(world, PhysicsBody, eid);
+  PhysicsBody.mass[eid] = 5;
+
+  addComponent(world, Ball, eid);
+  Ball.touchedFloor[eid] = 1;  
+
+  addComponent(world, InitialForce, eid);
+  let forceVektor = direction.vmul(new CANNON.Vec3(speed,speed,speed));
+  InitialForce.x[eid] = forceVektor.x;
+  InitialForce.y[eid] = forceVektor.y;
+  InitialForce.z[eid] = forceVektor.z;
+
+
+  
+}
+
+
 addTestWall(5);
 
 io.on("connection", (socket) => {
@@ -205,6 +282,7 @@ io.on("connection", (socket) => {
       };
 
       addComponent(world, Player, playerId);
+      Player.numBalls[playerId] = 1
 
       addComponent(world, PhysicsBody, playerId);
       PhysicsBody.mass[playerId] = 30;
@@ -262,7 +340,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("input", (payload) => {
-    logger.event("input", "client message:", payload);
+    //logger.event("input", "client message:", payload);
 
     socket.data.input = payload;
   });
@@ -329,6 +407,11 @@ setInterval(() => {
 
       // if (hasComponent(world, Model, eid)) {
       // }
+
+      if(hasComponent(world, InitialForce, eid)){
+        body.applyForce(new CANNON.Vec3(InitialForce.x[eid],InitialForce.y[eid],InitialForce.z[eid]))
+        removeComponent(world, InitialForce, eid);
+      }
 
       if (hasComponent(world, Box, eid)) {
         body.addShape(
@@ -452,10 +535,45 @@ setInterval(() => {
         Player.canJump[socket.data.eid] = 0;
       }
 
+      //cast ray for pickup
+      if(socket.data.input.E){
+        let rayResult: CANNON.RaycastResult = new CANNON.RaycastResult();
+        let rayOrigin = new CANNON.Vec3(Position.x[socket.data.eid],Position.y[socket.data.eid]!+cameraOffsetY,Position.z[socket.data.eid]);
+        let rayDirection = new CANNON.Vec3(socket.data.input.targetDirection.x, socket.data.input.targetDirection.y, socket.data.input.targetDirection.z)
+        
+        rayDirection.normalize()
+        physicsWorld.raycastClosest(rayOrigin.vadd(rayDirection.clone().vmul(new CANNON.Vec3(1.2,1.2,1.2))), rayOrigin.clone().vadd(rayDirection.clone().vmul(new CANNON.Vec3(5,5,5))),{},rayResult) //new CANNON.Ray(new CANNON.Vec3(Position.x[socket.data.eid],Position.y[socket.data.eid],Position.z[socket.data.eid]))
+        console.log(rayResult.body?.id)
+        if(hasComponent(world,Ball,rayResult.body?.id!)){
+          removeEntity(world, rayResult.body?.id!);
+          Player.numBalls[socket.data.eid] += 1;
+        }
+        
+
+      }
+
+      if(socket.data.input.right){
+          Player.numBalls[socket.data.eid] =1
+      }
+
+      //shoot ball
+      if(socket.data.input.left){
+        if(Player.numBalls[socket.data?.eid!]!>0){
+          let ballOrigin = new CANNON.Vec3(Position.x[socket.data.eid],Position.y[socket.data.eid]!+cameraOffsetY,Position.z[socket.data.eid]);
+          let ballDirection = new CANNON.Vec3(socket.data.input.targetDirection.x, socket.data.input.targetDirection.y, socket.data.input.targetDirection.z)
+          ballDirection.normalize()
+          shootBall(ballOrigin.vadd(ballDirection.vmul(new CANNON.Vec3(1.1,1.1,1.1))), ballDirection,4000)
+          Player.numBalls[socket.data.eid] -= 1;
+        }
+      }
+
+
       // Reset input
       socket.data.input.x = 0;
       socket.data.input.y = 0;
       socket.data.input.z = 0;
+      socket.data.input.E = false;
+      socket.data.input.targetDirection = null;
       socket.data.input.space = false;
       socket.data.input.shift = false;
       socket.data.input.left = false;
