@@ -214,10 +214,11 @@ const game: Game = {
 
     loadModels(game, (totalProgress: number) => {
       console.log("total load progress", totalProgress);
+    }).then(() => {
+        game.isSetup = true;
+        game.subscribe();
     });
 
-    game.isSetup = true;
-    game.subscribe();
   },
 
   start() {
