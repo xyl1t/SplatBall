@@ -21,9 +21,12 @@ import logger, { colors, green, red } from "./utils/logger.js";
 import {
   Box,
   Color,
+  Cylinder,
   DisplayCollider,
   Me,
+  Model,
   PhysicsBody,
+  Player,
   Position,
   Quaternion,
   Sphere,
@@ -60,8 +63,31 @@ const game = {
 };
 
 const physicsWorld = new CANNON.World({
-  gravity: new CANNON.Vec3(0, -9.82, 0),
+  gravity: new CANNON.Vec3(0, -24, 0),
 });
+
+const groundMaterial = new CANNON.Material("ground");
+const slipperyMaterial = new CANNON.Material("slippery");
+
+// Adjust constraint equation parameters for ground/ground contact
+const ground_ground = new CANNON.ContactMaterial(groundMaterial, groundMaterial, {
+  friction: 0.4,
+  restitution: 0.3,
+  contactEquationStiffness: 1e8,
+  contactEquationRelaxation: 3,
+  frictionEquationStiffness: 1e8,
+})
+
+const slippery_ground = new CANNON.ContactMaterial(groundMaterial, slipperyMaterial, {
+  friction: 0,
+  restitution: 0,
+  contactEquationStiffness: 1e8,
+  contactEquationRelaxation: 3,
+})
+
+physicsWorld.addContactMaterial(ground_ground);
+physicsWorld.addContactMaterial(slippery_ground);
+
 
 // Stores the physics body for each entity that has a Box component
 const entityPhysicsBodyMap = new Map();
@@ -178,6 +204,8 @@ io.on("connection", (socket) => {
         shift: false,
       };
 
+      addComponent(world, Player, playerId);
+
       addComponent(world, PhysicsBody, playerId);
       PhysicsBody.mass[playerId] = 30;
 
@@ -192,14 +220,26 @@ io.on("connection", (socket) => {
       Quaternion.z[playerId] = 0;
       Quaternion.w[playerId] = 1;
 
-      addComponent(world, Sphere, playerId);
-      Sphere.radius[playerId] = 0.6;
-
       addComponent(world, Color, playerId);
       Color.value[playerId] = Math.random() * 0xffffff;
 
       if (socket.data.debug.colliderWireframes) {
         addComponent(world, DisplayCollider, playerId);
+      }
+
+      addComponent(world, Model, playerId);
+      Model.id[playerId] = 2;
+
+      const modelId = Model.id[playerId];
+      if (modelId == 1) {
+        addComponent(world, Box, playerId);
+        Box.width[playerId] = 1.4;
+        Box.height[playerId] = 1.1;
+        Box.depth[playerId] = 0.7;
+      } else if (modelId == 2) {
+        addComponent(world, Cylinder, playerId);
+        Cylinder.radius[playerId] = 0.3;
+        Cylinder.height[playerId] = 1.70;
       }
 
       // NOTE: It is necessary to specify that this entity is the player ("Me")
@@ -272,7 +312,7 @@ setInterval(() => {
     // Add new entities to physics world
     queryPhysicsBodyEnter(world).forEach((eid) => {
       const body = new CANNON.Body({
-        linearDamping: 0.31,
+        linearDamping: 0.95,
         mass: PhysicsBody.mass[eid],
         position: new CANNON.Vec3(
           Position.x[eid],
@@ -287,6 +327,9 @@ setInterval(() => {
         ),
       });
 
+      // if (hasComponent(world, Model, eid)) {
+      // }
+
       if (hasComponent(world, Box, eid)) {
         body.addShape(
           new CANNON.Box(
@@ -297,15 +340,55 @@ setInterval(() => {
             ),
           ),
         );
+        body.material = groundMaterial;
       } else if (hasComponent(world, Sphere, eid)) {
         body.addShape(new CANNON.Sphere(Sphere.radius[eid]!));
+      } else if (hasComponent(world, Cylinder, eid)) {
+        // body.addShape(new CANNON.Sphere(Cylinder.radius[eid]!));
+        body.addShape(
+          new CANNON.Cylinder(
+            Cylinder.radius[eid],
+            Cylinder.radius[eid],
+            Cylinder.height[eid],
+            12
+          ),
+        );
+        body.angularFactor = new CANNON.Vec3(0, 1, 0);
+        body.material = slipperyMaterial;
       }
 
       if (hasComponent(world, Static, eid)) {
         body.type = CANNON.Body.STATIC;
       }
 
-      body.sleep();
+      // body.sleep();
+      // body.eid = eid;
+
+      if (hasComponent(world, Player, eid)) {
+
+        const contactNormal = new CANNON.Vec3() // Normal in the contact, pointing *out* of whatever the player touched
+        const upAxis = new CANNON.Vec3(0, 1, 0)
+
+        body.addEventListener("collide", (event: any) => {
+          const { contact } = event
+
+          // contact.bi and contact.bj are the colliding bodies, and contact.ni is the collision normal.
+          // We do not yet know which one is which! Let's check.
+          if (contact.bi.id === body.id) {
+            // bi is the player body, flip the contact normal
+            contact.ni.negate(contactNormal)
+          } else {
+            // bi is something else. Keep the normal as it is
+            contactNormal.copy(contact.ni)
+          }
+
+          // If contactNormal.dot(upAxis) is between 0 and 1, we know that the contact normal is somewhat in the up direction.
+          if (contactNormal.dot(upAxis) > 0.5) {
+            // Use a "good" threshold value between 0 and 1 here!
+            Player.canJump[eid] = 1;
+          }
+        });
+      }
 
       physicsWorld.addBody(body);
 
@@ -340,7 +423,7 @@ setInterval(() => {
       // Create direction vector from input
       const direction = {
         x: socket.data.input.x,
-        y: socket.data.input.space ? 1 : socket.data.input.shift ? -1 : 0,
+        y: 0,//socket.data.input.space ? 1 : socket.data.input.shift ? -1 : 0,
         z: socket.data.input.z,
       };
 
@@ -352,15 +435,22 @@ setInterval(() => {
       direction.y /= length == 0 ? 1 : length;
       direction.z /= length == 0 ? 1 : length;
 
-      const force = 700;
+      const force = 500;
       const forceVec = {
         x: force * direction.x,
-        y: force * direction.y,
+        y: force*3 * direction.y,
         z: force * direction.z,
       };
 
-      const body = entityPhysicsBodyMap.get(socket.data.eid);
+      const body: CANNON.Body = entityPhysicsBodyMap.get(socket.data.eid);
       body.applyForce(new CANNON.Vec3(forceVec.x, forceVec.y, forceVec.z));
+
+      if (socket.data.input.space) {
+        if (Player.canJump[socket.data.eid]) {
+          body.velocity.y = 12;
+        }
+        Player.canJump[socket.data.eid] = 0;
+      }
 
       // Reset input
       socket.data.input.x = 0;
