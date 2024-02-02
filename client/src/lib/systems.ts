@@ -31,7 +31,7 @@ export function getMeEntity(world: any[]) {
 }
 
 const queryPositionQuaternion = defineQuery([Position, Quaternion]);
-const queryColor = defineQuery([Color]); //testing
+// const queryColor = defineQuery([Color]); //testing
 const queryBall = defineQuery([Ball]);
 
 const queryModel = defineQuery([Model]);

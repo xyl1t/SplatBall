@@ -172,36 +172,38 @@ function addTestWall(width: number) {
 
 let ballId;
 
-function spawnBall(){
-  ballId = addEntity(world);
-  let eid = ballId;
+function spawnBall(loop: number) {
+  for (let i = 0; i < loop; i++) {
+    ballId = addEntity(world);
+    let eid = ballId;
+    wallids.push(eid);
 
-  addComponent(world, Position, eid);
-  Position.x[eid] = 0;
-  Position.y[eid] = 2;
-  Position.z[eid] = 3;
+    addComponent(world, Position, eid);
+    Position.x[eid] = (Math.random() * 2 - 1) * 7;
+    Position.y[eid] = 3 + Math.random() * 4;
+    Position.z[eid] = (Math.random() * 2 - 1) * 7;
 
-  addComponent(world, Quaternion, eid);
-  Quaternion.x[eid] = 0;
-  Quaternion.y[eid] = 0;
-  Quaternion.z[eid] = 0;
-  Quaternion.w[eid] = 1;
+    addComponent(world, Quaternion, eid);
+    Quaternion.x[eid] = 0;
+    Quaternion.y[eid] = 0;
+    Quaternion.z[eid] = 0;
+    Quaternion.w[eid] = 1;
 
-  addComponent(world, Sphere, eid);
-  Sphere.radius[eid] = 0.3;
+    addComponent(world, Sphere, eid);
+    Sphere.radius[eid] = 0.3;
 
-  addComponent(world, Color, eid);
-  Color.value[eid] = 0xb09707;
+    addComponent(world, Color, eid);
+    Color.value[eid] = 0xb09707;
 
-  addComponent(world, PhysicsBody, eid);
-  PhysicsBody.mass[eid] = 5;
+    addComponent(world, PhysicsBody, eid);
+    PhysicsBody.mass[eid] = 5;
 
-  addComponent(world, Ball, eid);
-  Ball.touchedFloor[eid] = 1;
+    addComponent(world, Ball, eid);
+    Ball.touchedFloor[eid] = 1;
 
+  }
 }
 
-spawnBall();
 
 function shootBall(origin:CANNON.Vec3, direction:CANNON.Vec3, speed:number){
 
@@ -236,13 +238,80 @@ function shootBall(origin:CANNON.Vec3, direction:CANNON.Vec3, speed:number){
   InitialForce.x[eid] = forceVektor.x;
   InitialForce.y[eid] = forceVektor.y;
   InitialForce.z[eid] = forceVektor.z;
-
-
-  
 }
 
+// addTestWall(5);
 
-addTestWall(5);
+function addMatt(loop: number) {
+  for (let i = 0; i < loop; i++) {
+    const eid = addEntity(world);
+    wallids.push(eid);
+
+    addComponent(world, Position, eid);
+    Position.x[eid] = (Math.random() * 2 - 1) * 7;
+    Position.y[eid] = 20 + Math.random() * 4;
+    Position.z[eid] = (Math.random() * 2 - 1) * 7;
+
+    addComponent(world, Quaternion, eid);
+    Quaternion.x[eid] = Math.random();
+    Quaternion.y[eid] = Math.random();
+    Quaternion.z[eid] = Math.random();
+    Quaternion.w[eid] = 1;
+
+    addComponent(world, Box, eid);
+    Box.width[eid] = 1;
+    Box.height[eid] = 0.1;
+    Box.depth[eid] = 2;
+
+    addComponent(world, Model, eid);
+    Model.id[eid] = 3;
+
+    addComponent(world, PhysicsBody, eid);
+    PhysicsBody.mass[eid] = 60;
+  }
+}
+
+function addBox(loop: number) {
+  for (let i = 0; i < loop; i++) {
+    const eid = addEntity(world);
+    wallids.push(eid);
+
+    addComponent(world, Position, eid);
+    Position.x[eid] = (Math.random() * 2 - 1) * 7;
+    Position.y[eid] = 20 + Math.random() * 4;
+    Position.z[eid] = (Math.random() * 2 - 1) * 7;
+
+    addComponent(world, Quaternion, eid);
+    Quaternion.x[eid] = 0;
+    Quaternion.y[eid] = 0;
+    Quaternion.z[eid] = 0;
+    Quaternion.w[eid] = 1;
+
+    addComponent(world, Box, eid);
+    Box.width[eid] = 1.4;
+    Box.height[eid] = 1.1;
+    Box.depth[eid] = 0.7;
+
+    addComponent(world, Model, eid);
+    Model.id[eid] = 1;
+
+    addComponent(world, PhysicsBody, eid);
+    PhysicsBody.mass[eid] = 60;
+  }
+}
+
+function addTests() {
+  wallids.forEach((eid) => {
+    removeEntity(world, eid);
+  });
+
+  addBox(10);
+  addMatt(10);
+
+  spawnBall(10);
+
+}
+addTests();
 
 io.on("connection", (socket) => {
   logger.event(green("connection"), "socket id:", socket.id);
@@ -282,7 +351,7 @@ io.on("connection", (socket) => {
       };
 
       addComponent(world, Player, playerId);
-      Player.numBalls[playerId] = 1
+      Player.numBalls[playerId] = 0
 
       addComponent(world, PhysicsBody, playerId);
       PhysicsBody.mass[playerId] = 30;
@@ -361,7 +430,7 @@ io.on("connection", (socket) => {
 
   socket.on("testWall", (payload) => {
     logger.event("testWall", "client message:", payload);
-    addTestWall(5);
+    addTests();
   });
 
   socket.on("disconnect", (reason) => {
@@ -543,7 +612,6 @@ setInterval(() => {
         
         rayDirection.normalize()
         physicsWorld.raycastClosest(rayOrigin.vadd(rayDirection.clone().vmul(new CANNON.Vec3(1.2,1.2,1.2))), rayOrigin.clone().vadd(rayDirection.clone().vmul(new CANNON.Vec3(5,5,5))),{},rayResult) //new CANNON.Ray(new CANNON.Vec3(Position.x[socket.data.eid],Position.y[socket.data.eid],Position.z[socket.data.eid]))
-        console.log(rayResult.body?.id)
         if(hasComponent(world,Ball,rayResult.body?.id!)){
           removeEntity(world, rayResult.body?.id!);
           Player.numBalls[socket.data.eid] += 1;
