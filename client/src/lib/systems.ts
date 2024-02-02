@@ -97,7 +97,7 @@ export function positionSystem(game: Game) {
         game.cfg.lerpRatio,
       );
 
-      let mouseSens = game.mouse.sensitivity || 0.01; //mouse sensitivity
+      let mouseSens = game.mouse.sensitivity || 0.002; //mouse sensitivity
 
       game.camera?.rotateOnWorldAxis(
         new THREE.Vector3(0, 1, 0),

@@ -172,7 +172,7 @@ const game: Game = {
     dy: 0,
     left: false,
     right: false,
-    sensitivity: 0.01,
+    sensitivity: 0.002,
   },
 
   world: createWorld(),

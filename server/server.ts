@@ -124,9 +124,9 @@ Quaternion.w[floor] = 1;
 addComponent(world, Static, floor);
 
 addComponent(world, Box, floor);
-Box.width[floor] = 15;
+Box.width[floor] = 30;
 Box.height[floor] = 1;
-Box.depth[floor] = 15;
+Box.depth[floor] = 30;
 
 addComponent(world, Color, floor);
 Color.value[floor] = 0xa89971;
@@ -232,7 +232,7 @@ function shootBall(origin:CANNON.Vec3, direction:CANNON.Vec3, speed:number){
   PhysicsBody.mass[eid] = 5;
 
   addComponent(world, Ball, eid);
-  Ball.touchedFloor[eid] = 1;  
+  Ball.touchedFloor[eid] = 0;  
 
   addComponent(world, InitialForce, eid);
   let forceVektor = direction.vmul(new CANNON.Vec3(speed,speed,speed));
@@ -549,34 +549,35 @@ setInterval(() => {
         
         body.addEventListener("collide", (event: any) => {
           const { contact } = event
-          console.log("hit")
 
+          if(Ball.touchedFloor[eid]==0){
+            // contact.bi and contact.bj are the colliding bodies, and contact.ni is the collision normal.
+            // We do not yet know which one is which! Let's check.
+            if (contact.bi.id != body.id) {
+              // bi is the player body, flip the contact normal
+              let collObj = bodyToEntityMap.get(contact.bi.id)
 
-          // contact.bi and contact.bj are the colliding bodies, and contact.ni is the collision normal.
-          // We do not yet know which one is which! Let's check.
-          if (contact.bi.id != body.id) {
-            // bi is the player body, flip the contact normal
-            let collObj = bodyToEntityMap.get(contact.bi.id)
-
-            if(!hasComponent(world,Player,collObj)){
-              console.log("no player")
+              if(!hasComponent(world,Player,collObj)){
+              }else{
+                let v = new CANNON.Vec3().copy(contact.ni);
+                v.negate()
+                entityPhysicsBodyMap.get(collObj).applyForce(v.vmul(new CANNON.Vec3(20000,20000,20000)))
+              }
             }else{
-              let v = new CANNON.Vec3().copy(contact.ni);
-              v.negate()
-              entityPhysicsBodyMap.get(collObj).applyForce(v.vmul(new CANNON.Vec3(20000,20000,20000)))
-            }
-          }else{
-            let collObj = bodyToEntityMap.get(contact.bj.id)
-            if(!hasComponent(world,Player,collObj)){
-              console.log("no player")
-            }else{
-              console.log("player" + collObj)
-              let v = new CANNON.Vec3().copy(contact.ni);
-              v.negate()
-              entityPhysicsBodyMap.get(collObj).applyForce(v.vmul(new CANNON.Vec3(20000,20000,20000)))
+              let collObj = bodyToEntityMap.get(contact.bj.id)
+              if(!hasComponent(world,Player,collObj)){
+              }else{
+                let v = new CANNON.Vec3().copy(contact.ni);
+                v.negate()
+                entityPhysicsBodyMap.get(collObj).applyForce(v.vmul(new CANNON.Vec3(20000,20000,20000)))
 
+              }
             }
           }
+
+          Ball.touchedFloor[eid] = 1;
+
+          
         });
       }
 
