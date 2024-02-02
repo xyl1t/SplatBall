@@ -36,6 +36,20 @@ export const Sphere = defineComponent({
   radius: Types.f32,
 });
 
+export const Ball = defineComponent({
+  touchedFloor: Types.ui8,
+});
+
+export const Player = defineComponent({
+  numBalls: Types.ui8,
+});
+
+export const InitialForce = defineComponent({
+  x: Types.f32,
+  y: Types.f32,
+  z: Types.f32
+});
+
 export const Mesh = defineComponent({
   assetPath: Types.ui16,
 });
@@ -52,6 +66,9 @@ componentNames.set(Position, varToString({ Position }));
 componentNames.set(Quaternion, varToString({ Quaternion }));
 componentNames.set(Box, varToString({ Box }));
 componentNames.set(Sphere, varToString({ Box }));
+componentNames.set(Ball, varToString({ Box }));
+componentNames.set(Player, varToString({ Box }));
+componentNames.set(InitialForce, varToString({ Box }));
 componentNames.set(PhysicsBody, varToString({ Box }));
 componentNames.set(Color, varToString({ Color }));
 componentNames.set(DisplayCollider, varToString({ DisplayCollider }));
