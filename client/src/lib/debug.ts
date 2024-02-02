@@ -48,6 +48,15 @@ export default function setupDebug(game: Game) {
     .add(game.debug.gridHelper!, "visible")
     .listen()
     .name("Grid helper");
+  debugFolder.add(game.debug.axesHelper!, "visible").listen().name("Axes helper");
+  debugFolder.add(game.debug.gridHelper!, "visible").listen().name("Grid helper");
+  debugFolder.add(game.debug, "showDebugColliders").listen().name("Debug collider").onChange((value) => {
+    if (value) {
+      game.camera!.layers.enable(2);
+    } else {
+      game.camera!.layers.disable(2);
+    }
+  });
 
   const labelFolder = debugFolder.addFolder("Label");
   labelFolder.add(game.debug.labels, "showEids").name("Show eid's");
@@ -99,6 +108,7 @@ function enableDebug(game: Game) {
   game.debug.gui.show();
   game.debug.stats.dom.style.visibility = "visible";
   game.camera!.layers.enable(1);
+  game.camera!.layers.enable(2);
 }
 
 function disableDebug(game: Game) {
@@ -106,4 +116,5 @@ function disableDebug(game: Game) {
   game.debug.gui.hide();
   game.debug.stats.dom.style.visibility = "hidden";
   game.camera!.layers.disable(1);
+  game.camera!.layers.disable(2);
 }

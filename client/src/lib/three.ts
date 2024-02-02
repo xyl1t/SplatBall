@@ -44,6 +44,7 @@ export function setupCamera(game: Game) {
   );
 
   camera.layers.enable(1);
+  camera.layers.enable(2);
 
   return camera;
 }

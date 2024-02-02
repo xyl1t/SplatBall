@@ -16,6 +16,7 @@ import {
   positionSystem,
   renderSystem,
 } from "./systems";
+import { loadModels } from "./models";
 
 type GameConfig = {
   parentDomElement: HTMLElement;
@@ -82,6 +83,7 @@ export type Game = {
   };
 
   world: any[];
+  clientWorld: any[];
   playerId: number;
 
   debug: {
@@ -90,6 +92,7 @@ export type Game = {
     stats: Stats;
     axesHelper: THREE.AxesHelper;
     gridHelper: THREE.GridHelper;
+    showDebugColliders: boolean;
     controls?: OrbitControls;
     labelRenderer: CSS2DRenderer;
     propertyChangeListeners: PropertyChangeListener;
@@ -173,12 +176,14 @@ const game: Game = {
   },
 
   world: createWorld(),
+  clientWorld: createWorld(),
   playerId: -1,
 
   debug: {
     enabled: false,
     axesHelper: new THREE.AxesHelper(15),
     gridHelper: new THREE.GridHelper(15, 15),
+    showDebugColliders: true,
     gui: new GUI(),
     stats: new Stats(),
     controls: undefined,
@@ -206,7 +211,11 @@ const game: Game = {
     setupEventListeners(game);
     setupSocketIO(game);
     setupDebug(game);
-  
+
+    loadModels(game, (totalProgress: number) => {
+      console.log("total load progress", totalProgress);
+    });
+
     game.isSetup = true;
     game.subscribe();
   },

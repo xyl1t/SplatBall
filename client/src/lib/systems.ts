@@ -1,14 +1,19 @@
 import {
+  Not,
   defineQuery,
   enterQuery,
   exitQuery,
   getEntityComponents,
+  hasComponent,
 } from "bitecs";
 import {
   Ball,
   Box,
   Color,
+  Cylinder,
   Me,
+  Model,
+  PhysicsBody,
   Position,
   Quaternion,
   Sphere,
@@ -17,6 +22,7 @@ import {
 import { Game } from "./game";
 import * as THREE from "three";
 import { CSS2DObject } from "three/examples/jsm/Addons.js";
+import { models } from "./models";
 
 const queryMe = defineQuery([Me]);
 export function getMeEntity(world: any[]) {
@@ -28,21 +34,29 @@ const queryPositionQuaternion = defineQuery([Position, Quaternion]);
 const queryColor = defineQuery([Color]); //testing
 const queryBall = defineQuery([Ball]);
 
-const queryBox = defineQuery([Box]);
-const queryBoxEnter = enterQuery(queryBox);
-const queryBoxExit = exitQuery(queryBox);
+const queryModel = defineQuery([Model]);
+const queryModelEnter = enterQuery(queryModel);
+const queryModelExit = exitQuery(queryModel);
 
-const querySphere = defineQuery([Sphere]);
+const queryBox = defineQuery([Box, Not(Model)]);
+const queryBoxEnter = enterQuery(queryBox);
+const queryBoxExit = exitQuery(defineQuery([Box]));
+
+const querySphere = defineQuery([Sphere, Not(Model)]);
 const querySphereEnter = enterQuery(querySphere);
 const querySphereExit = exitQuery(querySphere);
 
-export function colorSystem(game: Game){
-  const ids = queryColor(game.world);
-  ids.forEach((eid) => {
+const queryPhysicsBody = defineQuery([PhysicsBody]);
+const queryPhysicsBodyEnter = enterQuery(queryPhysicsBody);
+const queryPhysicsBodyExit = exitQuery(queryPhysicsBody);
 
-    const obj:any = game.scene!.getObjectByName(eid.toString());
-    obj?.material!.color.setHex(Color.value[eid])    
-  });
+export function colorSystem(_game: Game){
+  // const ids = queryColor(game.world);
+  // ids.forEach((eid) => {
+  //
+  //   const obj:any = game.scene!.getObjectByName(eid.toString());
+  //   obj?.material!.color.setHex(Color.value[eid])    
+  // });
 }
 
 export function positionSystem(game: Game) {
@@ -66,16 +80,18 @@ export function positionSystem(game: Game) {
       new THREE.Vector3(Position.x[eid], Position.y[eid], Position.z[eid]),
       game.cfg.lerpRatio,
     );
-      
   });
 
   if (!game.debug.debugControlsActive) {
+    const playerObj = game.scene?.getObjectByName(game.playerId.toString());
+    if (playerObj) playerObj.visible = false;
+
     //enable camera movement, if player spawns
     if (game.playerId != -1) {
       game.camera?.position.lerp(
         new THREE.Vector3(
           Position.x[game.playerId],
-          Position.y[game.playerId],
+          Position.y[game.playerId] + 0.8,
           Position.z[game.playerId],
         ),
         game.cfg.lerpRatio,
@@ -114,6 +130,9 @@ export function positionSystem(game: Game) {
         game.cfg.lerpRatio,
       );
     }
+  } else {
+    const playerObj = game.scene?.getObjectByName(game.playerId.toString());
+    if (playerObj) playerObj.visible = true;
   }
 }
 
@@ -190,9 +209,24 @@ export function renderSystem(game: Game) {
   };
 
   // ENTERED
-  queryBoxEnter(game.world).forEach((eid) => {
-    console.log("+++ box entered", eid);
+  queryModelEnter(game.world).forEach((eid) => {
+    console.log("model enter", eid);
+    const model = models.get(Model.id[eid])?.clone();
 
+    if (!model) {
+      console.log("model not found:", Model.id[eid]);
+      return;
+    }
+
+    model.name = eid.toString();
+
+    addLabelToMesh(model, eid.toString());
+
+    game.scene!.add(model);
+  });
+
+  queryBoxEnter(game.world).forEach((eid) => {
+    console.log("box enter", eid);
     const geometry = new THREE.BoxGeometry(
       Box.width[eid],
       Box.height[eid],
@@ -219,8 +253,7 @@ export function renderSystem(game: Game) {
   });
 
   querySphereEnter(game.world).forEach((eid) => {
-    console.log("+++ sphere entered", eid);
-
+    console.log("sphere enter", eid);
     const geometry = new THREE.SphereGeometry(Sphere.radius[eid], 32, 32);
     const material = new THREE.MeshStandardMaterial({
       color: Color.value[eid],
@@ -236,10 +269,67 @@ export function renderSystem(game: Game) {
     game.scene!.add(mesh);
   });
 
+  queryPhysicsBodyEnter(game.world).forEach((eid) => {
+    console.log("physicsBody enter", eid);
+    let geometry = null;
+    if (hasComponent(game.world, Box, eid)) {
+      geometry = new THREE.BoxGeometry(
+        Box.width[eid],
+        Box.height[eid],
+        Box.depth[eid],
+      );
+    } else if (hasComponent(game.world, Sphere, eid)) {
+      geometry = new THREE.SphereGeometry(
+        Sphere.radius[eid],
+        Sphere.radius[eid],
+        Sphere.radius[eid],
+      );
+    } else if (hasComponent(game.world, Cylinder, eid)) {
+      geometry = new THREE.CylinderGeometry(
+        Cylinder.radius[eid],
+        Cylinder.radius[eid],
+        Cylinder.height[eid],
+      );
+    } else {
+      console.log("no geometry for collider:", eid);
+      return;
+    }
+
+    const material = new THREE.MeshStandardMaterial({
+      color: 0x0000aa,
+      transparent: true,
+      opacity: 0.3,
+      wireframe: true,
+    });
+
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.name = "physicsBody";
+    // mesh.scale.set(1.005, 1.005, 1.005);
+    mesh.layers.set(2);
+
+    const parent = game.scene!.getObjectByName(eid.toString());
+    parent?.add(mesh);
+  });
+
   // EXITED
+  queryPhysicsBodyExit(game.world).forEach((eid) => {
+    console.log("physicsBody exit", eid);
+    const mesh = game
+      .scene!.getObjectByName(eid.toString())
+      ?.getObjectByName("physicsBody");
+    if (!mesh) return;
+    mesh.parent!.remove(mesh);
+  });
+
+  queryModelExit(game.world).forEach((eid) => {
+    console.log("model exit", eid);
+    const model = game.scene!.getObjectByName(eid.toString());
+    model?.remove(model?.getObjectByName("label")!);
+    game.scene!.remove(model!);
+  });
 
   queryBoxExit(game.world).forEach((eid) => {
-    console.log("--- box exited", eid);
+    console.log("box exit", eid);
     const mesh = game.scene!.getObjectByName(eid.toString());
     if (!mesh) return;
     mesh.remove(mesh.getObjectByName("label")!);
@@ -247,7 +337,7 @@ export function renderSystem(game: Game) {
   });
 
   querySphereExit(game.world).forEach((eid) => {
-    console.log("--- sphere exited", eid);
+    console.log("sphere exit", eid);
     const mesh = game.scene!.getObjectByName(eid.toString());
     if (!mesh) return;
     mesh.remove(mesh.getObjectByName("label")!);
@@ -290,3 +380,51 @@ export function labelSystem(game: Game) {
     label.element.textContent = textContent;
   });
 }
+
+// export function debugColliderSystem(game: Game) {
+//   queryPhysicsBodyEnter(game.clientWorld).forEach((eid) => {
+//     let geometry = null;
+//     if (hasComponent(game.world, Box, eid)) {
+//       geometry = new THREE.BoxGeometry(
+//         Box.width[eid],
+//         Box.height[eid],
+//         Box.depth[eid],
+//       );
+//     } else {
+//       console.log("no geometry for collider:", eid);
+//       return;
+//     }
+//
+//     const material = new THREE.MeshStandardMaterial({
+//       color: 0x000000,
+//       transparent: true,
+//       opacity: 0.5,
+//     });
+//     const mesh = new THREE.Mesh(geometry, material);
+//     mesh.name = eid.toString();
+//     mesh.position.set(Position.x[eid], Position.y[eid], Position.z[eid]);
+//     mesh.quaternion.set(
+//       Quaternion.x[eid],
+//       Quaternion.y[eid],
+//       Quaternion.z[eid],
+//       Quaternion.w[eid],
+//     );
+//     mesh.castShadow = false;
+//     mesh.receiveShadow = false;
+//
+//     game.scene!.add(mesh);
+//   });
+//
+//   queryPhysicsBody(game.clientWorld).forEach((eid) => {
+//     const mesh = game.scene!.getObjectByName(eid.toString());
+//     if (!mesh) return;
+//
+//     mesh.position.set(Position.x[eid], Position.y[eid], Position.z[eid]);
+//     mesh.quaternion.set(
+//       Quaternion.x[eid],
+//       Quaternion.y[eid],
+//       Quaternion.z[eid],
+//       Quaternion.w[eid],
+//     );
+//   });
+// }
